@@ -47,7 +47,7 @@
 //int main(int argc, char **argv)
 int run_client(int argc, char **argv)
 {
-	int server=0;s
+	int server=0;
 	int counter=0;
 	char *port;
 	char *IP;
@@ -56,17 +56,13 @@ int run_client(int argc, char **argv)
 		printf("\n[PA1-Client@CSE489/589]$ ");
 		fflush(stdout);
 		
-		
+		int receive=receive_msg_from_server(server);
+		printf("Receive:%d\n",receive);
+			
 		char *msg = (char*) malloc(sizeof(char)*MSG_SIZE);
 		memset(msg, '\0', MSG_SIZE);
 		if(fgets(msg, MSG_SIZE-1, stdin) == NULL) //Mind the newline character that will be written to msg
-		{
-			int receive=receive_msg_from_server(server);
-			printf("Receive:%d\n",receive);
 			exit(-1);
-		
-		}
-			//exit(-1);
 		//printf("argv:%s ",argv[2]);
 		
 		if(strcmp(msg,"IP\n") == 0)
