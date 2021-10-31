@@ -47,13 +47,26 @@
 //int main(int argc, char **argv)
 int run_client(int argc, char **argv)
 {
+	int server=0;s
+	int counter=0;
+	char *port;
+	char *IP;
+	char *subString;
 	while(TRUE){
 		printf("\n[PA1-Client@CSE489/589]$ ");
 		fflush(stdout);
+		
+		
 		char *msg = (char*) malloc(sizeof(char)*MSG_SIZE);
 		memset(msg, '\0', MSG_SIZE);
 		if(fgets(msg, MSG_SIZE-1, stdin) == NULL) //Mind the newline character that will be written to msg
+		{
+			int receive=receive_msg_from_server(server);
+			printf("Receive:%d\n",receive);
 			exit(-1);
+		
+		}
+			//exit(-1);
 		//printf("argv:%s ",argv[2]);
 		
 		if(strcmp(msg,"IP\n") == 0)
@@ -68,7 +81,48 @@ int run_client(int argc, char **argv)
 		{
 			getPort(argv[2]);
 		}
+		else if (strstr(msg,"LOGIN") && counter == 0)
+		{
+			
+			counter++;
+			subString = strtok(msg," ");
+			IP = strtok(NULL," ");
+			port = strtok(NULL," ");
+			port[strlen(port) - 1] =0;
+			//strncpy(port_conf,port[0],strlen(port)-1);
+			//printf("IP is %s and port is %s\n",IP, port);
+			printf("%s %s %s %s \n",IP,port, argv[1],argv[2]);
+			server = connect_to_host(IP, port);
+			printf("\nConnection done. Return complete");
+		}
+		else if (strstr(msg,"SEND") && server != 0){
+			printf("\nSENDing it to the remote server ... ");
+			if(send(server, msg, strlen(msg), 0) == strlen(msg))
+				printf("Done!\n");
+			fflush(stdout);
+			printf("\nEntered else if");
+		} 
+		else
+		{
+				
+		}
+		
 	}
+}
+
+int receive_msg_from_server(int server)
+{
+	char *buffer = (char*) malloc(sizeof(char)*BUFFER_SIZE);
+	memset(buffer, '\0', BUFFER_SIZE);
+	printf("In receive from server\n");
+	
+	if(recv(server, buffer, BUFFER_SIZE, 0) >= 0){
+		printf("Server responded: %s", buffer);
+		fflush(stdout);
+		return 1;
+	}
+
+	return 0;
 }
 
 int connect_to_host(char *server_ip, char* server_port)
@@ -94,6 +148,7 @@ int connect_to_host(char *server_ip, char* server_port)
 	if(connect(fdsocket, res->ai_addr, res->ai_addrlen) < 0)
 		perror("Connect failed");
 	
+	printf("Connection done. Return");
 	freeaddrinfo(res);
 
 	return fdsocket;
