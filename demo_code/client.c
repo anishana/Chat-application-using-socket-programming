@@ -34,6 +34,8 @@
 #define TRUE 1
 #define MSG_SIZE 256
 #define BUFFER_SIZE 256
+#define BACKLOG 5
+#define STDIN 0
 
 //int connect_to_host(char *server_ip, char *server_port);
 
@@ -49,88 +51,158 @@ int run_client(int argc, char **argv)
 {
 	int server=0;
 	int counter=0;
-	char *port;
+	int fdaccept=0,caddr_len;
+	struct sockaddr_in server_addr;
 	char *IP;
+	char *port;
 	char *subString;
+	int head_socket,selret;
+	fd_set master_list, watch_list;
+	int client_socket=-1;
+	struct sockaddr_in client;
+	
+    	/*for(int i=0; i<argc;i++)
+    	{
+    		printf("argv.%d:%s\n",i,argv[i]);
+    	}*/
+    	
+	FD_ZERO(&master_list);
+	FD_ZERO(&watch_list);
+	
+	/*
+	if((client_socket = socket(AF_INET, SOCK_STREAM, 0))<0){
+		perror("listen:Cannot create socket\n");
+		exit(1);
+	}
+	printf("listen:Socket created\n");
+	
+	bzero((char *)&client, sizeof(client));
+	client.sin_family = AF_INET;
+	client.sin_addr.s_addr = htonl(INADDR_ANY);
+	client.sin_port = htons(atoi(argv[2]));
+	
+	
+	if((bind(client_socket,(struct sockaddr *)&client, sizeof(client)))<0){
+		perror("Cannot bind\n");
+		close(client_socket);
+		exit(1);
+	}
+	printf("Bind done\n");
+
+	if(listen(client_socket,BACKLOG)<0){
+		perror("Listen failed\n");
+		close(client_socket);
+		exit(1);
+	}
+	printf("wait for connection to arrive\n");*/
+	
+	/* Register the listening socket */
+	FD_SET(STDIN, &master_list);
+	/* Register STDIN */
+	FD_SET(server, &master_list);
+	head_socket = server;
+		
 	while(TRUE){
-		printf("\n[PA1-Client@CSE489/589]$ ");
+		printf("[PA1-Server@CSE489/589]$ ");
 		fflush(stdout);
 		
-		int receive=receive_msg_from_server(server);
-		printf("Receive:%d\n",receive);
-			
-		char *msg = (char*) malloc(sizeof(char)*MSG_SIZE);
-		memset(msg, '\0', MSG_SIZE);
-		if(fgets(msg, MSG_SIZE-1, stdin) == NULL) //Mind the newline character that will be written to msg
-			exit(-1);
-		//printf("argv:%s ",argv[2]);
+		FD_ZERO(&watch_list);
+		memcpy(&watch_list, &master_list, sizeof(master_list));
+		selret = select(head_socket + 1, &watch_list, NULL, NULL, NULL);
 		
-		if(strcmp(msg,"IP\n") == 0)
-		{
-			getIp();
-		} 
-		else if(strcmp(msg,"AUTHOR\n") == 0)
-		{
-			getAuthor();
-		}
-		else if(strcmp(msg,"PORT\n") == 0)
-		{
-			getPort(argv[2]);
-		}
-		else if (strstr(msg,"LOGIN") && counter == 0)
-		{
-			
-			counter++;
-			subString = strtok(msg," ");
-			IP = strtok(NULL," ");
-			port = strtok(NULL," ");
-			port[strlen(port) - 1] =0;
-			//strncpy(port_conf,port[0],strlen(port)-1);
-			//printf("IP is %s and port is %s\n",IP, port);
-			printf("%s %s %s %s \n",IP,port, argv[1],argv[2]);
-			server = connect_to_host(IP, port);
-			printf("\nConnection done. Return complete");
-		}
-		else if (strstr(msg,"SEND") && server != 0){
-			printf("\nSENDing it to the remote server ... ");
-			if(send(server, msg, strlen(msg), 0) == strlen(msg))
-				printf("Done!\n");
-			fflush(stdout);
-			printf("\nEntered else if");
-		} 
-		else
-		{
+		if(selret < 0)
+			perror("select failed.");
+		
+		//printf("selret:%d\n",selret);
+		//printf("head_socket:%d\n",head_socket);
+		/* Check if we have sockets/STDIN to process */
+		if(selret > 0){
+			if(FD_ISSET(STDIN, &watch_list)){
+				char *msg = (char*) malloc(sizeof(char)*MSG_SIZE);
+				memset(msg, '\0', MSG_SIZE);
+				if(fgets(msg, MSG_SIZE-1, stdin) == NULL) //Mind the newline character that will be written to msg
+					exit(-1);
+					
+				if(strcmp(msg,"IP\n") == 0)
+				{
+					getIp();
+				} 
+				else if(strcmp(msg,"AUTHOR\n") == 0)
+				{
+					getAuthor();
+				}
+				else if(strcmp(msg,"PORT\n") == 0)
+				{
+					getPort(argv[2]);
+				}
+				else if (strstr(msg,"LOGIN") && counter == 0)
+				{
 				
+					counter++;
+					subString = strtok(msg," ");
+					IP = strtok(NULL," ");
+					port = strtok(NULL," ");
+					port[strlen(port) - 1] =0;
+
+					printf("%s %s %s %s \n",IP,port, argv[1],argv[2]);
+					server = connect_to_host(IP, port,argv[2]);
+					head_socket = (server > head_socket) ? server : head_socket;
+					FD_SET(server, &master_list);
+				}
+				else if (strstr(msg,"SEND") && server != 0){
+					char *saveptr;
+					printf("\nSENDing it to the remote server ... ");
+    					char *token=strtok(msg," ");
+    					char *message1 = strtok(NULL,"");
+    					
+    					
+					if(send(server,message1, strlen(message1), 0) == strlen(message1))
+						printf("Done!\n");
+					fflush(stdout);
+				} 
+				FD_CLR(STDIN,&watch_list);
+			
+			} 
+			else if (FD_ISSET(server, &watch_list))
+			{
+				receive_msg_from_server(server);
+				FD_CLR(server,&watch_list);
+			}
 		}
 		
 	}
+		
+	
 }
 
 int receive_msg_from_server(int server)
 {
+	
+	
 	char *buffer = (char*) malloc(sizeof(char)*BUFFER_SIZE);
 	memset(buffer, '\0', BUFFER_SIZE);
-	printf("In receive from server\n");
 	
 	if(recv(server, buffer, BUFFER_SIZE, 0) >= 0){
-		printf("Server responded: %s", buffer);
+		printf("Server responded: %s\n", buffer);
 		fflush(stdout);
 		return 1;
-	}
+	} 
+	else return 0;
 
-	return 0;
 }
 
-int connect_to_host(char *server_ip, char* server_port)
+int connect_to_host(char *server_ip, char* server_port, char *port)
 {
 	int fdsocket;
 	struct addrinfo hints, *res;
+	//struct sockaddr_in client;
 
 	/* Set up hints structure */	
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
-
+	hints.ai_flags = AI_PASSIVE;
+	
 	/* Fill up address structures */	
 	if (getaddrinfo(server_ip, server_port, &hints, &res) != 0)
 		perror("getaddrinfo failed");
@@ -144,7 +216,30 @@ int connect_to_host(char *server_ip, char* server_port)
 	if(connect(fdsocket, res->ai_addr, res->ai_addrlen) < 0)
 		perror("Connect failed");
 	
-	printf("Connection done. Return");
+    	/*
+    	if(bind(fdsocket, (struct sockaddr *)&client, sizeof(sockaddr_in)) < 0 )
+		perror("Bind failed");
+	
+	if(listen(fdsocket, BACKLOG) < 0)
+		perror("Unable to listen on port");
+		
+		
+	if((bind(fdsocket,(struct sockaddr *)&client, sizeof(client)))<0){
+		perror("Cannot bind\n");
+		close(fdsocket);
+		exit(1);
+	}
+	printf("Bind done\n");
+
+	if(listen(fdsocket,BACKLOG)<0){
+		perror("Listen failed\n");
+		close(fdsocket);
+		exit(1);
+	}
+	printf("wait for connection to arrive\n");
+	*/
+		
+		
 	freeaddrinfo(res);
 
 	return fdsocket;

@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include "shell_commands.h"
+#include <arpa/inet.h>
 
 #define BACKLOG 5
 #define STDIN 0
@@ -56,14 +57,34 @@ int run_server(int argc, char **argv)
 		
 	return 0;
 }
+ 
+
+struct client_details
+{
+   int list_id; 
+   char hostname[50];
+   char ip_addr[100];
+   int fdaccept;
+   int port_num;
+};
+
+void display (struct client_details client_list[100]);
+void sort (struct client_details client_list[100]);
+void adjust_list_ids (struct client_details client_list[100]);
+void remove_from_list (struct client_details client_list[100],char inet_addr [100]);
 
 
 void receive_msg(int argc, char **argv)
 {
-	int server_socket, head_socket, selret, sock_index, fdaccept=0, caddr_len;
+	int server_socket, head_socket, selret, sock_index, caddr_len;
+	int fdaccept;
+	struct client_details client_list[100];
+	struct hostent *he;
+	struct in_addr ipv4addr;
 	struct sockaddr_in client_addr;
 	struct addrinfo hints, *res;
 	fd_set master_list, watch_list;
+	int i=0;
 
 	char message[100];
 	/* Set up hints structure */
@@ -72,10 +93,6 @@ void receive_msg(int argc, char **argv)
     	hints.ai_socktype = SOCK_STREAM;
     	hints.ai_flags = AI_PASSIVE;
     	
-    	/*for(int i=0; i<argc;i++)
-    	{
-    		printf("argv.%d:%s\n",i,argv[i]);
-    	}*/
     	
     	/* Fill up address structures */
 	if (getaddrinfo(NULL, argv[2], &hints, &res) != 0)
@@ -108,7 +125,7 @@ void receive_msg(int argc, char **argv)
 	while(TRUE){
 		memcpy(&watch_list, &master_list, sizeof(master_list));
 		printf("[PA1-Server@CSE489/589]$ ");
-		
+		fflush(stdout);
 		
 		/* select() system call. This will BLOCK */
 		selret = select(head_socket + 1, &watch_list, NULL, NULL, NULL);
@@ -126,18 +143,8 @@ void receive_msg(int argc, char **argv)
 					
 					/* Check if new command on STDIN */
 					if (sock_index == STDIN){
-						//char *cmd = (char*) malloc(sizeof(char)*CMD_SIZE);
-						
-						//memset(cmd, '\0', CMD_SIZE);
-						//if(fgets(cmd, CMD_SIZE-1, stdin) == NULL) //Mind the newline character that will be written to cmd
-						//	exit(-1);
-						
-						//printf("\nI got: %s\n", cmd);
 						
 						//Process PA1 commands here ...
-						
-						
-						fflush(stdout);
 						char *msg = (char*) malloc(sizeof(char)*MSG_SIZE);
 						memset(msg, '\0', MSG_SIZE);
 						if(fgets(msg, MSG_SIZE-1, stdin) == NULL) //Mind the newline character that will be written to msg
@@ -164,12 +171,52 @@ void receive_msg(int argc, char **argv)
 						fdaccept = accept(server_socket, (struct sockaddr *)&client_addr, &caddr_len);
 						if(fdaccept < 0)
 							perror("Accept failed.");
+						inet_pton(AF_INET, inet_ntoa(client_addr.sin_addr), &ipv4addr);
+						he = gethostbyaddr(&ipv4addr, sizeof ipv4addr, AF_INET);
+						
+						printf("\n Remote Host connected!\n");
+						/*printf("Host name: %s\n", he->h_name);
+						printf("IP address is: %s\n", inet_ntoa(client_addr.sin_addr));   
+						printf("port number %d\n", ntohs(client_addr.sin_port));
+						printf("%d",client_list[0].list_id);*/
+						for (i=0;i<100;i++){
+							if (client_list[i].list_id == 0)
+							break;
+						}
+						
+						printf("i;%d\n",i);
+						if (client_list[i].list_id  == 0)
+						{
+							client_list[i].list_id = 1;
+							strcpy(client_list[i].hostname, he->h_name);
+							strcpy(client_list[i].ip_addr ,inet_ntoa(client_addr.sin_addr));
+							client_list[i].port_num = ntohs(client_addr.sin_port);
+							client_list[i].fdaccept = fdaccept;
+						}
+						
+						else {
+							client_list[i].list_id = 1;
+							strcpy(client_list[i].hostname,he->h_name);
+							strcpy(client_list[i].ip_addr,inet_ntoa(client_addr.sin_addr));
+							client_list[i].port_num = ntohs(client_addr.sin_port);
+							client_list[i].fdaccept = fdaccept;
+						}
+						printf("client_list[i].ip_addr;%s\n",client_list[i].ip_addr);
+						sort(client_list);
+						//printf("Done with sorting");
+						
+						adjust_list_ids(client_list);
+						
+						if(fdaccept < 0)
+							perror("Accept failed.");
 						
 						printf("\nRemote Host connected!\n");                        
 						
 						/* Add to watched socket list */
 						FD_SET(fdaccept, &master_list);
+
 						if(fdaccept > head_socket) head_socket = fdaccept;
+						
 					}
 					/* Read from existing clients */
 					else{
@@ -188,10 +235,30 @@ void receive_msg(int argc, char **argv)
 							//Process incoming data from existing clients here ...
 							
 							printf("\nClient sent me: %s\n", buffer);
-							printf("ECHOing it back to the remote host ... ");
-							if(send(fdaccept, buffer, strlen(buffer), 0) == strlen(buffer))
-								printf("Done!\n");
-							fflush(stdout);
+							//printf("ECHOing it back to the remote host ... ");
+							
+							
+    							char *ip=strtok(buffer," ");
+		    					char *message1 = strtok(NULL,"");
+		    					
+		    					printf("ip:%s\n",ip);
+		    					printf("message1:%s\n",message1);
+							int receiver = 0;
+							for(i=0;i<100;i++)
+							{
+								if(strcmp(client_list[i].ip_addr,ip))
+								{
+									receiver = client_list[i].fdaccept;
+									break;
+								}
+							}
+							
+							if(receiver > 0)
+							{
+	    							if(send(fdaccept, message1, strlen(buffer), 0) == strlen(buffer))
+									printf("Done!\n");
+								fflush(stdout);
+							}
 						}
 						
 						free(buffer);
@@ -203,3 +270,73 @@ void receive_msg(int argc, char **argv)
 	
     	
 }
+
+
+
+
+void sort (struct client_details client_list[100])
+{
+int i, j;
+   struct client_details temp;
+    
+    for (i = 0; i <= 100; i++)
+    {
+		if (client_list[i+1].port_num==0) {
+		break;}
+        for (j = 0; j <= 100 - i; j++)
+        {   //printf("%d %d %d\n",i,j,client_list[j].port_num);
+			if (client_list[j+1].port_num==0)
+			break;
+				
+			
+            if (client_list[j].port_num > client_list[j + 1].port_num)
+            {
+				
+                temp = client_list[j];
+                client_list[j] = client_list[j + 1];
+                client_list[j + 1] = temp;
+            } 
+			
+			
+			
+		}
+	
+}
+}
+void adjust_list_ids (struct client_details client_list[100]){
+	int i;
+	
+	for (i=0;i<100;i++)
+	{
+		if (client_list[i].list_id == 0)
+			break;
+		else
+			client_list[i].list_id = i+1;
+	}
+}
+
+void remove_from_list (struct client_details client_list[100],char inet_addr[100]){
+	int i,pointer;
+	struct client_details temp;
+	for (i=0;i<100;i++)
+	{
+		if (strcmp(client_list[i].ip_addr,inet_addr) == 0)
+		break;
+	}
+	client_list[i].list_id = 0;
+	client_list[i].port_num = 0;
+
+	for (pointer=i;pointer<100;pointer++)
+	{
+		if (client_list[pointer].list_id==0)
+			break;
+		else {
+		temp = client_list[pointer];
+                client_list[pointer] = client_list[pointer + 1];
+                client_list[pointer + 1] = temp;
+		}
+	}
+		
+	
+}
+
