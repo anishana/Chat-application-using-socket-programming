@@ -152,14 +152,36 @@ int run_client(int argc, char **argv)
 				else if (strstr(msg,"SEND") && server != 0){
 					char *saveptr;
 					printf("\nSENDing it to the remote server ... ");
-    					char *token=strtok(msg," ");
-    					char *message1 = strtok(NULL,"");
+    					// char *token=strtok(msg," ");
+    					// char *message1 = strtok(NULL,"");
     					
     					
-					if(send(server,message1, strlen(message1), 0) == strlen(message1))
+					if(send(server,msg, strlen(msg), 0) == strlen(msg))
 						printf("Done!\n");
 					fflush(stdout);
 				}
+				else if (strstr(msg,"BROADCAST") && server != 0){
+					char *saveptr;
+					printf("\nBROADCASTing it to the remote server ... ");
+    					// char *token=strtok(msg," ");
+    					// char *message1 = strtok(NULL,"");
+    					
+    					
+					if(send(server,msg, strlen(msg), 0) == strlen(msg))
+						printf("Done!\n");
+					fflush(stdout);
+				}				
+				else if (strstr(msg,"BLOCK") && server != 0){
+					char *saveptr;
+					printf("\nBLOCKing IP ... ");
+    					//char *token=strtok(msg," ");
+    					//char *message1 = strtok(NULL,"");
+    					
+    					
+					if(send(server,msg, strlen(msg), 0) == strlen(msg))
+						printf("Done!\n");
+					fflush(stdout);
+				}				
 
 				else if (strstr(msg,"LOGOUT") ){
 					char *saveptr;
