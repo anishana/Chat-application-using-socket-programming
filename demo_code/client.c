@@ -103,7 +103,7 @@ int run_client(int argc, char **argv)
 	head_socket = server;
 		
 	while(TRUE){
-		printf("[PA1-Server@CSE489/589]$ ");
+		printf("[PA1-Client@CSE489/589]$ ");
 		fflush(stdout);
 		
 		FD_ZERO(&watch_list);

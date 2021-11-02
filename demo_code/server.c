@@ -184,7 +184,7 @@ void receive_msg(int argc, char **argv)
 							break;
 						}
 						
-						printf("i;%d\n",i);
+						printf("i:%d\n",i);
 						if (client_list[i].list_id  == 0)
 						{
 							client_list[i].list_id = 1;
@@ -201,16 +201,12 @@ void receive_msg(int argc, char **argv)
 							client_list[i].port_num = ntohs(client_addr.sin_port);
 							client_list[i].fdaccept = fdaccept;
 						}
-						printf("client_list[i].ip_addr;%s\n",client_list[i].ip_addr);
+						//printf("client_list[i].ip_addr:%s\n",client_list[i].ip_addr);
+						//printf("fdaccept:%d\n",fdaccept);
 						sort(client_list);
 						//printf("Done with sorting");
 						
 						adjust_list_ids(client_list);
-						
-						if(fdaccept < 0)
-							perror("Accept failed.");
-						
-						printf("\nRemote Host connected!\n");                        
 						
 						/* Add to watched socket list */
 						FD_SET(fdaccept, &master_list);
@@ -234,20 +230,21 @@ void receive_msg(int argc, char **argv)
 						else {
 							//Process incoming data from existing clients here ...
 							int receiver = 0;
-								if (strstr(buffer,"LOGOUT") )
+							if (strstr(buffer,"LOGOUT") )
+							{
+								for(i=0;i<100;i++)
 								{
-									for(i=0;i<100;i++)
-									{
-										if(client_list[i].fdaccept==sock_index)
-										break;
-										
-									}
-									remove_from_list (client_list ,client_list[i].fdaccept);
-									sort(client_list);
-									display(client_list);
+									if(client_list[i].fdaccept==sock_index)
+									break;
 									
 								}
-							else {
+								remove_from_list (client_list ,client_list[i].fdaccept);
+								sort(client_list);
+								display(client_list);
+								
+							}
+							else 
+							{
 							printf("\nClient sent me: %s\n", buffer);
 							//printf("ECHOing it back to the remote host ... ");
 							
@@ -255,29 +252,52 @@ void receive_msg(int argc, char **argv)
     							char *ip=strtok(buffer," ");
 		    					char *message1 = strtok(NULL,"");
 		    					
-		    					printf("ip:%s\n",ip);
-		    					printf("message1:%s\n",message1);
+		    					//printf("ip:%s\n",ip);
+		    					//printf("message1:%s\n",message1);
 							int receiver = 0;
 							for(i=0;i<100;i++)
 							{
-								if(strcmp(client_list[i].ip_addr,ip))
+								//printf("client_list[i].ip_addr:%s\n",client_list[i].ip_addr);
+								if(strcmp(client_list[i].ip_addr,ip) == 0)
 								{
+									//printf("client_list[i].ip_addr:%s\n",client_list[i].ip_addr);
+									//printf("ip:%s\n",ip);
 									receiver = client_list[i].fdaccept;
 									break;
 								}
 							}
 							
+							//printf("Receiver:%d\n",receiver);
+							
 							if(receiver > 0)
 							{
-	    							if(send(fdaccept, message1, strlen(buffer), 0) == strlen(buffer))
+	    							if(send(receiver, message1, strlen(buffer), 0) == strlen(buffer))
 									printf("Done!\n");
 								fflush(stdout);
 							}
-							}
+
+							
+							for(i=0;i<100;i++)
+							{
+								
+								if(client_list[i].list_id != 0 && sock_index != client_list[i].fdaccept)
+								{
+
+									if(send(client_list[i].fdaccept, message1, strlen(buffer), 0) == strlen(buffer))
+										printf("Done!\n");
+									fflush(stdout);
+								}
+							
+							
+							
+							} 
+
 						}
 						
+						}						
 						free(buffer);
 					}
+					
 				}
 			}
 		}
