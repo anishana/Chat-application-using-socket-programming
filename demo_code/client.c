@@ -159,7 +159,20 @@ int run_client(int argc, char **argv)
 					if(send(server,message1, strlen(message1), 0) == strlen(message1))
 						printf("Done!\n");
 					fflush(stdout);
-				} 
+				}
+
+				else if (strstr(msg,"LOGOUT") ){
+					char *saveptr;
+					printf("\nSENDing it to the remote server ... ");
+					char *logout_message =strtok(msg," ");
+					if(send(server,logout_message, strlen(logout_message), 0) == strlen(logout_message))
+						printf("Done!\n");
+					else 
+						printf("Not done\n");
+					fflush(stdout);
+					
+    					
+				}				
 				FD_CLR(STDIN,&watch_list);
 			
 			} 

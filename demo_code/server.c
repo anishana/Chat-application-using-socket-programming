@@ -71,7 +71,7 @@ struct client_details
 void display (struct client_details client_list[100]);
 void sort (struct client_details client_list[100]);
 void adjust_list_ids (struct client_details client_list[100]);
-void remove_from_list (struct client_details client_list[100],char inet_addr [100]);
+void remove_from_list (struct client_details client_list[100],int key);
 
 
 void receive_msg(int argc, char **argv)
@@ -233,7 +233,21 @@ void receive_msg(int argc, char **argv)
 						}
 						else {
 							//Process incoming data from existing clients here ...
-							
+							int receiver = 0;
+								if (strstr(buffer,"LOGOUT") )
+								{
+									for(i=0;i<100;i++)
+									{
+										if(client_list[i].fdaccept==sock_index)
+										break;
+										
+									}
+									remove_from_list (client_list ,client_list[i].fdaccept);
+									sort(client_list);
+									display(client_list);
+									
+								}
+							else {
 							printf("\nClient sent me: %s\n", buffer);
 							//printf("ECHOing it back to the remote host ... ");
 							
@@ -258,6 +272,7 @@ void receive_msg(int argc, char **argv)
 	    							if(send(fdaccept, message1, strlen(buffer), 0) == strlen(buffer))
 									printf("Done!\n");
 								fflush(stdout);
+							}
 							}
 						}
 						
@@ -315,12 +330,12 @@ void adjust_list_ids (struct client_details client_list[100]){
 	}
 }
 
-void remove_from_list (struct client_details client_list[100],char inet_addr[100]){
+void remove_from_list (struct client_details client_list[100],int key){
 	int i,pointer;
 	struct client_details temp;
 	for (i=0;i<100;i++)
 	{
-		if (strcmp(client_list[i].ip_addr,inet_addr) == 0)
+		if (client_list[i].fdaccept == key)
 		break;
 	}
 	client_list[i].list_id = 0;
@@ -340,3 +355,12 @@ void remove_from_list (struct client_details client_list[100],char inet_addr[100
 	
 }
 
+void display (struct client_details client_list[100])
+{
+	int i;	
+for (i=0;i<100;i++){
+							if (client_list[i].list_id == 0)
+								break;
+							printf("%-5d%-35s%-20s%-8d\n", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+						}
+}
