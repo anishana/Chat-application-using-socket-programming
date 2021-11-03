@@ -118,11 +118,15 @@ int run_client(int argc, char **argv)
 		/* Check if we have sockets/STDIN to process */
 		if(selret > 0){
 			if(FD_ISSET(STDIN, &watch_list)){
-				char *msg = (char*) malloc(sizeof(char)*MSG_SIZE);
-				memset(msg, '\0', MSG_SIZE);
-				if(fgets(msg, MSG_SIZE-1, stdin) == NULL) //Mind the newline character that will be written to msg
+				char *cmd = (char*) malloc(sizeof(char)*MSG_SIZE);
+				memset(cmd, '\0', MSG_SIZE);
+				if(fgets(cmd, MSG_SIZE-1, stdin) == NULL) //Mind the newline character that will be written to msg
 					exit(-1);
-					
+				
+				char * block = malloc(strlen(cmd) + 1);
+                  		strcpy(block, cmd);
+                  		char * msg = strtok(block, " ");
+                  	        printf("Message %s\n", msg);
 				if(strcmp(msg,"IP\n") == 0)
 				{
 					getIp();
@@ -135,11 +139,11 @@ int run_client(int argc, char **argv)
 				{
 					getPort(argv[2]);
 				}
-				else if (strstr(msg,"LOGIN") && counter == 0)
+				else if (strcmp(msg,"LOGIN\n") && counter == 0)
 				{
-				
+					printf("\nLOGINing it to the remote server ... ");
 					counter++;
-					subString = strtok(msg," ");
+					subString = strtok(cmd," ");
 					IP = strtok(NULL," ");
 					port = strtok(NULL," ");
 					port[strlen(port) - 1] =0;
@@ -149,44 +153,54 @@ int run_client(int argc, char **argv)
 					head_socket = (server > head_socket) ? server : head_socket;
 					FD_SET(server, &master_list);
 				}
-				else if (strstr(msg,"SEND") && server != 0){
+				else if (strcmp(msg,"SEND\n") && server != 0){
 					char *saveptr;
 					printf("\nSENDing it to the remote server ... ");
     					// char *token=strtok(msg," ");
     					// char *message1 = strtok(NULL,"");
     					
     					
-					if(send(server,msg, strlen(msg), 0) == strlen(msg))
+					if(send(server,cmd, strlen(cmd), 0) == strlen(cmd))
 						printf("Done!\n");
 					fflush(stdout);
 				}
-				else if (strstr(msg,"BROADCAST") && server != 0){
+				else if (strcmp(msg,"BROADCAST\n") && server != 0){
 					char *saveptr;
 					printf("\nBROADCASTing it to the remote server ... ");
     					// char *token=strtok(msg," ");
     					// char *message1 = strtok(NULL,"");
     					
     					
-					if(send(server,msg, strlen(msg), 0) == strlen(msg))
+					if(send(server,cmd, strlen(cmd), 0) == strlen(cmd))
 						printf("Done!\n");
 					fflush(stdout);
 				}				
-				else if (strstr(msg,"BLOCK") && server != 0){
+				else if (strcmp(msg,"BLOCK\n") && server != 0){
 					char *saveptr;
 					printf("\nBLOCKing IP ... ");
     					//char *token=strtok(msg," ");
     					//char *message1 = strtok(NULL,"");
     					
     					
-					if(send(server,msg, strlen(msg), 0) == strlen(msg))
+					if(send(server,cmd, strlen(cmd), 0) == strlen(cmd))
 						printf("Done!\n");
 					fflush(stdout);
 				}				
-
-				else if (strstr(msg,"LOGOUT") ){
+				else if (strcmp(msg,"UNBLOCK\n") && server != 0){
 					char *saveptr;
-					printf("\nSENDing it to the remote server ... ");
-					char *logout_message =strtok(msg," ");
+					printf("\nUNBLOCKing IP ... ");
+    					//char *token=strtok(msg," ");
+    					//char *message1 = strtok(NULL,"");
+    					
+    					
+					if(send(server,msg, strlen(cmd), 0) == strlen(cmd))
+						printf("Done!\n");
+					fflush(stdout);
+				}
+				else if (strcmp(msg,"LOGOUT\n") ){
+					char *saveptr;
+					printf("\nLOGOUTing it to the remote server ... ");
+					char *logout_message =strtok(cmd," ");
 					if(send(server,logout_message, strlen(logout_message), 0) == strlen(logout_message))
 						printf("Done!\n");
 					else 

@@ -277,6 +277,7 @@ void receive_msg(int argc, char ** argv) {
                       // if ip not current
                       if (count_block_indexes == k) {
                         // reached end, insert new ip
+                        ip[strlen(ip)-1] = '\0';
                         blocked_struct_list[k].fd_accept = sock_index;
                         blocked_struct_list[k].count++;
                         blocked_struct_list[k].blocked_ips_list[0] = malloc(strlen(ip) + 1);
@@ -297,6 +298,7 @@ void receive_msg(int argc, char ** argv) {
                         {
                           if (blocked_struct_list[k].count == j) {
                             // reached end insert new ip
+                            ip[strlen(ip)-1] = '\0';                            
                             blocked_struct_list[k].blocked_ips_list[j] = malloc(strlen(ip) + 1);
                             strcpy(blocked_struct_list[k].blocked_ips_list[j], ip);
                             blocked_struct_list[k].count++;
@@ -318,7 +320,57 @@ void receive_msg(int argc, char ** argv) {
 
                     }
                   }
+                  for(int g=0; g<count_block_indexes;g++){
+                    printf("Index %d\n", g);
+                    for(int h=0;h<blocked_struct_list[g].count;h++){
+                      printf("  Blocked IP %s\n", blocked_struct_list[g].blocked_ips_list[h]);
+                    }
+                  }
+                } else if (strcmp(cmd, "UNBLOCK") == 0) {
+                  char * block = malloc(strlen(buffer) + 1);
+                  strcpy(block, buffer);
+                  char * block_cmd = strtok(block, " ");
+                  char * ip = strtok(NULL, "");
 
+                  //for UNBlock
+                  printf("cmd:%s\n", cmd);
+                  printf("ip:%s\n", ip);
+                  int unblocked = 0;
+                  ip[strlen(ip)-1] = '\0';  
+                  for(int k=0; k<count_block_indexes;k++){
+                    printf("k=%d\nblocked_struct_list[k].fd_accept:%d\nsock_index:%d\n", k, blocked_struct_list[k].fd_accept, sock_index);
+                    if (blocked_struct_list[k].fd_accept == sock_index){
+                      for(int j=0;j<blocked_struct_list[k].count;j++){
+                      printf("j=%d\nblocked_struct_list[k].blocked_ips_list[j]:%s\nip:%s\n", j, blocked_struct_list[k].blocked_ips_list[j], ip);                      
+                        if(strcmp(blocked_struct_list[k].blocked_ips_list[j], ip)==0) {
+                          unblocked = 1;
+                          printf("Unblocked set to 1\n");
+	                  if(j==blocked_struct_list[k].count-1){
+	                    
+	                    blocked_struct_list[k].blocked_ips_list[j] = '\0';
+	                  } else {
+	                    // blocked_struct_list[k].blocked_ips_list[j] = malloc(strlen(blocked_struct_list[k].blocked_ips_list[j+1]) + 1);
+	                    strcpy(blocked_struct_list[k].blocked_ips_list[j], blocked_struct_list[k].blocked_ips_list[j+1]);	                    
+	                  }
+                        }
+                      }
+                    }
+                    if(unblocked == 1){
+                      printf("%d Unblocked %s\n", sock_index, ip);
+                      blocked_struct_list[k].count--;
+                      break;
+                    }
+                    else{
+                      printf("%d Cannot Unblock %s\n", sock_index, ip);
+                    }
+                  }
+                  for(int g=0; g<count_block_indexes;g++){
+                    printf("Index %d\n", g);
+                    for(int h=0;h<blocked_struct_list[g].count;h++){
+                      printf("  Blocked IP %s\n", blocked_struct_list[g].blocked_ips_list[h]);
+                    }
+                  }
+                  
                 } else if (strcmp(cmd, "SEND") == 0) {
                   // SEND message
                   char * send_msg = malloc(strlen(buffer) + 1);
@@ -357,12 +409,23 @@ void sendMessage(char * ip, char * message1, struct client_details client_list[1
   int receiver = 0;
   int do_not_send = 0;
   for (int i = 0; i < 100; i++) {
-
-    if (strcmp(client_list[i].ip_addr, ip) == 0) {
+    printf("i %d\n", i);
+    printf("client_list[i].ip_addr , %s\n", client_list[i].ip_addr);
+    printf("ip , %s\n", ip);     
+    if (strcmp(client_list[i].ip_addr, ip) == 0) { 
+      printf("count_block_indexes, %d\n", count_block_indexes);    
       for (int k = 0; k < count_block_indexes; k++) {
+        printf("k, %d\n", k);
+        printf("blocked_struct_list[k].fd_accept , %d", blocked_struct_list[k].fd_accept);
+        printf("sock_index , %d\n", sock_index);            
         if (blocked_struct_list[k].fd_accept == sock_index) {
           for (int j = 0; j < blocked_struct_list[k].count; j++) {
+            printf("j , %d\n", j);
+            
+            printf("blocked_struct_list[k].blocked_ips_list[j] , %sD\n", blocked_struct_list[k].blocked_ips_list[j]);
+            printf("ip , %s\nA", ip);             
             if (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0) {
+              printf("Do not send set to 1\n");
               do_not_send = 1;
               break;
             }
@@ -375,13 +438,14 @@ void sendMessage(char * ip, char * message1, struct client_details client_list[1
   }
 
   if (do_not_send == 0) {
+    printf("In do not send = %d\n",do_not_send);
     if (receiver > 0) {
       if (send(receiver, message1, strlen(buffer), 0) == strlen(buffer))
         printf("Done!\n");
       fflush(stdout);
     }
   } else {
-    printf("%d has blocked ip %s. Hence message not sent", sock_index, ip);
+    printf("%d has blocked ip %s. Hence message not sent\n", sock_index, ip);
 
   }
 }
