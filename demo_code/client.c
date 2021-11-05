@@ -232,9 +232,13 @@ int receive_msg_from_server(int server)
 	memset(buffer, '\0', BUFFER_SIZE);
 	
 	if(recv(server, buffer, BUFFER_SIZE, 0) >= 0){
-		printf("Server responded: %s\n", buffer);
-		fflush(stdout);
-		return 1;
+	  char * client_ip = strtok(buffer, " ");
+	  char * msg = strtok(NULL, "");
+	  // printf("msg from:%s\n[msg]:%s\n", client_ip, msg);
+	  cse4589_print_and_log("msg from:%s\n[msg]:%s\n", client_ip, msg);
+	  // printf("Server responded: %s\n", buffer);
+	  fflush(stdout);
+	  return 1;
 	} 
 	else return 0;
 
