@@ -1,6 +1,6 @@
 /**
  *@server
- *@author  Swetank Kumar Saha<swetankk@buffalo.edu>, Shivang Aggarwal<shivanga@buffalo.edu>
+ *@author  Ashley Sachin Anish
  *@version 1.0
  *
  *@section LICENSE
@@ -158,6 +158,10 @@ void receive_msg(int argc, char **argv)
             {
               getIp();
             }
+			else if (strcmp(msg, "LIST\n") == 0)
+            {
+              display(client_list);
+            }
             else if (strcmp(msg, "AUTHOR\n") == 0)
             {
               getAuthor();
@@ -241,12 +245,27 @@ void receive_msg(int argc, char **argv)
               char *fn_cp = malloc(strlen(buffer) + 1);
               strcpy(fn_cp, buffer);
               char *cmd = strtok(fn_cp, " ");
-              printf("cmd:%s\n", cmd);
+              printf("cmd:%s %d\n", cmd);
 
-              if (strcmp(cmd, "LOGOUT") == 0)
+              if (strcmp(cmd, "LOGOUT\n") == 0)
               {
                 logout(client_list, sock_index);
+				//printf("Logout was received");
               }
+			  else if (strcmp(cmd, "REFRESH\n") == 0)
+			  {
+				char *buffer1 = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+				int i;
+				//printf("%s",cmd );
+				for (i = 0; i < 100; i++)
+					{
+					if (client_list[i].list_id == 0)
+						break;
+					sprintf(buffer1, "%s %d %s %s %d", "REFRESH", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+					if (send(sock_index, buffer1, strlen(buffer1), 0) == strlen(buffer1))
+						printf("Done forwarding refreshed list");
+					}
+			  }
               else if (strcmp(cmd, "BLOCK") == 0)
               {
                 count_block_indexes = blockClient(buffer, count_block_indexes, blocked_struct_list, sock_index);
@@ -280,7 +299,7 @@ void receive_msg(int argc, char **argv)
               }
               else
               {
-                printf("\nCMD not found");
+                printf("\nCMD not found, %s", cmd);
               }
             }
 
@@ -300,8 +319,9 @@ void logout(struct client_details client_list[100], int sock_index)
     if (client_list[i].fdaccept == sock_index)
       break;
   }
+  //printf("%s will be removed\n", client_list[i].hostname);
   remove_from_list(client_list, client_list[i].fdaccept);
-  sort(client_list);
+  adjust_list_ids(client_list);
   display(client_list);
 }
 
@@ -681,15 +701,15 @@ void remove_from_list(struct client_details client_list[100], int key)
   client_list[i].list_id = 0;
   client_list[i].port_num = 0;
 
-  for (pointer = i; pointer < 100; pointer++)
+  for (pointer = i+1; pointer < 100; pointer++)
   {
     if (client_list[pointer].list_id == 0)
       break;
     else
     {
-      temp = client_list[pointer];
-      client_list[pointer] = client_list[pointer + 1];
-      client_list[pointer + 1] = temp;
+      temp = client_list[pointer-1];
+      client_list[pointer-1] = client_list[pointer];
+      client_list[pointer ] = temp;
     }
   }
 }
