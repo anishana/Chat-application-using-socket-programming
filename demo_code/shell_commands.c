@@ -30,24 +30,36 @@ void getIp()
     	// address into ASCII string
     	IPbuffer = inet_ntoa(*((struct in_addr*)
                            host_entry->h_addr_list[0]));
-	cse4589_print_and_log("[IP:SUCCESS]\n");  	
+		successMessage("IP"); 	
     	cse4589_print_and_log("IP:%s\n", IPbuffer);
-	cse4589_print_and_log("[IP:END]\n");    	
+		endMessage("IP");	   	
 }
 
 
 void getAuthor() 
 {
-	cse4589_print_and_log("[AUTHOR:SUCCESS]\n");
+	successMessage("AUTHOR");
 	cse4589_print_and_log("I, sachinge, have read and understood the course academic integrity policy.\n");
-	cse4589_print_and_log("[AUTHOR:END]\n");	
+	endMessage("AUTHOR");	
 
 }
 
 void getPort(char *port)
 {
-	cse4589_print_and_log("[PORT:SUCCESS]\n");
+	successMessage("PORT");
 	cse4589_print_and_log("PORT:%s\n", port);
-	cse4589_print_and_log("[PORT:END]\n");	
+	endMessage("PORT");
 }
 
+void successMessage(char *cmdstr) {
+	cse4589_print_and_log("[%s:SUCCESS]\n", cmdstr);
+}
+
+void errorMessage(char *cmdstr) {
+	cse4589_print_and_log("[%s:ERROR]\n", cmdstr);
+	cse4589_print_and_log("[%s:END]\n", cmdstr);
+}
+
+void endMessage(char *cmdstr) {
+	cse4589_print_and_log("[%s:END]\n", cmdstr);
+}

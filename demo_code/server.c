@@ -43,6 +43,8 @@
 
 #include <arpa/inet.h>
 
+#include "server.h"
+
 #define BACKLOG 5
 #define STDIN 0
 #define TRUE 1
@@ -67,35 +69,9 @@ int run_server(int argc, char ** argv) {
   return 0;
 }
 
-struct client_details {
-  int list_id;
-  char hostname[50];
-  char ip_addr[100];
-  int fdaccept;
-  int port_num;
-};
-
-struct blocked_details {
-  int count;
-  int fd_accept;
-  char * blocked_ips_list[4]; // = {NULL, NULL, NULL, NULL};
-};
-
-struct message_details {
-  int count;
-  char * ip_receiver;
-  char * messages_list[100];
-};
-
-int sendMessage(char * ip, char * message1, struct client_details client_list[100], struct blocked_details blocked_struct_list[5], struct message_details message_buffer_list[5], int sock_index, char * buffer, int count_block_indexes, int max_receiver_ips);
-int broadcast(char * message1, struct client_details client_list[100], struct blocked_details blocked_struct_list[5], struct message_details message_buffer_list[5], int sock_index, char * buffer, int count_block_indexes, int max_receiver_ips);
-
-void display(struct client_details client_list[100]);
-void sort(struct client_details client_list[100]);
-void adjust_list_ids(struct client_details client_list[100]);
-void remove_from_list(struct client_details client_list[100], int key);
 
 void receive_msg(int argc, char ** argv) {
+
     int server_socket, head_socket, selret, sock_index, caddr_len;
     int fdaccept;
     struct client_details client_list[100];
@@ -113,10 +89,6 @@ void receive_msg(int argc, char ** argv) {
     int max_receiver_ips = 0;
     char message[100];
 
-    /*for(i=0;i < 4;i++)
-    {
-    	printf("Count %d\n", blocked_struct_list[i].count);
-    }*/
     /*Set up hints structure */
     memset( & hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -157,7 +129,6 @@ void receive_msg(int argc, char ** argv) {
       selret = select(head_socket + 1, & watch_list, NULL, NULL, NULL);
       if (selret < 0)
         perror("select failed.");
-      printf("selret:%d\n", selret);
       /*Check if we have sockets/STDIN to process */
       if (selret > 0) {
 
@@ -175,105 +146,67 @@ void receive_msg(int argc, char ** argv) {
               if (fgets(msg, MSG_SIZE - 1, stdin) == NULL) //Mind the newline character that will be written to msg
                 exit(-1);
 
-              if (strcmp(msg, "IP\n") == 0) {
-                getIp();
-              } else if (strcmp(msg, "AUTHOR\n") == 0) {
-                getAuthor();
-              } else if (strcmp(msg, "PORT\n") == 0) {
-                getPort(argv[2]);
-              } else {
-                // printf("In else\n");
-                char * blocked_cmd = strtok(msg, " ");
-                char * blocker_ip = strtok(NULL, "");              
-                if (strcmp(blocked_cmd, "BLOCKED") == 0) {
-                // printf("in blocked\n");
-                int blocker_fdaccept = -1;
-                blocker_ip[strlen(blocker_ip)-1] = '\0';
-                for (int ind = 0; ind < 100; ind++) {
-                  // printf("client_list[ind].ip_addr: %s\n", client_list[ind].ip_addr);
-                  // printf("blocker_ip: %s\n", blocker_ip);                   
-                  if (strcmp(client_list[ind].ip_addr, blocker_ip) == 0) {
-                    // printf("in fd accept \n");
-                    blocker_fdaccept = client_list[ind].fdaccept;
-                    break;
-                  }
-                }
-                int counter = 1;
-                //printf("count_block_indexes : %d\n", count_block_indexes);
-                for (int k = 0; k < count_block_indexes; k++) {
-                  // printf("blocker_fdaccept: %d\n", blocker_fdaccept);
-                  // printf("blocked_struct_list[k].fd_accept: %d\n", blocked_struct_list[k].fd_accept);                  
-                  if (blocker_fdaccept == blocked_struct_list[k].fd_accept) {
-                    for (int i = 0; i < 100; i++) {
-                      // printf("blocked_struct_list[k].count : %d\n", blocked_struct_list[k].count);
-                      for (int j = 0; j < blocked_struct_list[k].count; j++) {
-                        // printf("blocked_struct_list[k].blocked_ips_list[j] : %s\n", blocked_struct_list[k].blocked_ips_list[j]);
-                        // printf("client_list[i].ip_addr : %s\n", client_list[i].ip_addr);                        
-                        if (strcmp(blocked_struct_list[k].blocked_ips_list[j], client_list[i].ip_addr) == 0) {
-                          
-                          // print list format
-                          printf("%-5d%-35s%-20s%-8d\n", counter, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
-                          counter++;
-                        }
-                      }
-                    }
-                  }
-                }
-               }
-              }
-                free(msg);
-              }
-              /*Check if new client is requesting connection */
-              else if (sock_index == server_socket) {
+                if (strcmp(msg, "IP\n") == 0) {
+                    getIp();
+                } else if (strcmp(msg, "AUTHOR\n") == 0) {
+                    getAuthor();
+                } else if (strcmp(msg, "PORT\n") == 0) {
+                    getPort(argv[2]);
+                } 
+            } else if (sock_index == server_socket) {
                 caddr_len = sizeof(client_addr);
                 fdaccept = accept(server_socket, (struct sockaddr * ) & client_addr, & caddr_len);
                 if (fdaccept < 0)
-                  perror("Accept failed.");
+                perror("Accept failed.");
                 inet_pton(AF_INET, inet_ntoa(client_addr.sin_addr), & ipv4addr);
                 he = gethostbyaddr( & ipv4addr, sizeof ipv4addr, AF_INET);
 
                 printf("\n Remote Host connected!\n");
-                printf("Host name: %s\n", he -> h_name);
-                printf("IP address is: %s\n", inet_ntoa(client_addr.sin_addr));
-                printf("port number %d\n", ntohs(client_addr.sin_port));
-                printf("%d", client_list[0].list_id);
                 for (i = 0; i < 100; i++) {
-                  if (client_list[i].list_id == 0)
+                if (client_list[i].list_id == 0)
                     break;
                 }
 
-                printf("i:%d\n", i);
                 if (client_list[i].list_id == 0) {
-                  client_list[i].list_id = 1;
-                  strcpy(client_list[i].hostname, he -> h_name);
-                  strcpy(client_list[i].ip_addr, inet_ntoa(client_addr.sin_addr));
-                  client_list[i].port_num = ntohs(client_addr.sin_port);
-                  client_list[i].fdaccept = fdaccept;
+                    client_list[i].list_id = 1;
+                    strcpy(client_list[i].hostname, he -> h_name);
+                    strcpy(client_list[i].ip_addr, inet_ntoa(client_addr.sin_addr));
+                    client_list[i].port_num = ntohs(client_addr.sin_port);
+                    client_list[i].fdaccept = fdaccept;
                 } else {
-                  client_list[i].list_id = 1;
-                  strcpy(client_list[i].hostname, he -> h_name);
-                  strcpy(client_list[i].ip_addr, inet_ntoa(client_addr.sin_addr));
-                  client_list[i].port_num = ntohs(client_addr.sin_port);
-                  client_list[i].fdaccept = fdaccept;
+                    client_list[i].list_id = 1;
+                    strcpy(client_list[i].hostname, he -> h_name);
+                    strcpy(client_list[i].ip_addr, inet_ntoa(client_addr.sin_addr));
+                    client_list[i].port_num = ntohs(client_addr.sin_port);
+                    client_list[i].fdaccept = fdaccept;
                 }
-                //printf("client_list[i].ip_addr:%s\n",client_list[i].ip_addr);
-                //printf("fdaccept:%d\n",fdaccept);
                 sort(client_list);
-                //printf("Done with sorting");
 
                 adjust_list_ids(client_list);
 
-                /*Add to watched socket list */
+                /* Add to watched socket list */
                 FD_SET(fdaccept, & master_list);
 
                 if (fdaccept > head_socket) head_socket = fdaccept;
-              }
-              /*Read from existing clients */
-              else {
-                /*Initialize buffer to receieve response */
+                char * buffer1 = (char * ) malloc(sizeof(char) * BUFFER_SIZE);
+                int i;
+                for (i = 0; i < 100; i++) {
+                    if (client_list[i].list_id == 0)
+                    break;
+                    sprintf(buffer1,"%s %d %s %s %d", "LOGIN", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+                    if(send(fdaccept, buffer1, strlen(buffer1), 0) == strlen(buffer1))
+                        printf("Done");
+                }
+                fflush(stdout);
+			
+           
+            } else {
+                //Process incoming data from existing clients here ...
+                int receiver = 0;
                 char * buffer = (char * ) malloc(sizeof(char) * BUFFER_SIZE);
                 memset(buffer, '\0', BUFFER_SIZE);
-
+                
+                
                 if (recv(sock_index, buffer, BUFFER_SIZE, 0) <= 0) {
                   close(sock_index);
                   printf("Remote Host terminated connection!\n");
@@ -281,155 +214,165 @@ void receive_msg(int argc, char ** argv) {
                   /*Remove from watched list */
                   FD_CLR(sock_index, & master_list);
                 } else {
-                  //Process incoming data from existing clients here ...
-                  int receiver = 0;
-                  if (strstr(buffer, "LOGOUT")) {
-                    for (i = 0; i < 100; i++) {
-                      if (client_list[i].fdaccept == sock_index)
-                        break;
-                    }
-                    remove_from_list(client_list, client_list[i].fdaccept);
-                    sort(client_list);
-                    display(client_list);
-                  } else {
-                    //char *saveptr;
-                    printf("\nClient sent me: %s\n", buffer);
-
+                    printf("Message:%s\n",buffer);
                     char * fn_cp = malloc(strlen(buffer) + 1);
                     strcpy(fn_cp, buffer);
                     char * cmd = strtok(fn_cp, " ");
+                    printf("cmd:%s\n",cmd);
 
-                    //printf("ECHOing it back to the remote host ... ");
-
-                    if (strcmp(cmd, "BLOCK") == 0) {
-                      char * block = malloc(strlen(buffer) + 1);
-                      strcpy(block, buffer);
-                      char * block_cmd = strtok(block, " ");
-                      char * ip = strtok(NULL, "");
-
-                      //for Block
-                      printf("cmd:%s\n", cmd);
-                      printf("ip:%s\n", ip);
-
-                      int end_outer_loop = 0;
-                      for (int k = 0; k < 5 && end_outer_loop == 0; k++) {
-
-                        if ((count_block_indexes == k) || (blocked_struct_list[k].fd_accept != sock_index)) {
-                          // if ip not current
-                          if (count_block_indexes == k) {
-                            // reached end, insert new ip
-                            ip[strlen(ip) - 1] = '\0';
-                            blocked_struct_list[k].fd_accept = sock_index;
-                            blocked_struct_list[k].count++;
-                            blocked_struct_list[k].blocked_ips_list[0] = malloc(strlen(ip) + 1);
-                            strcpy(blocked_struct_list[k].blocked_ips_list[0], ip);
-                            end_outer_loop = 1;
-                            count_block_indexes++;
+                    if (strcmp(cmd, "LOGOUT")) {
+                        for (i = 0; i < 100; i++) {
+                            if (client_list[i].fdaccept == sock_index)
                             break;
-                          } else if (blocked_struct_list[k].fd_accept != sock_index) {
-                            // continue to next
-                            continue;
-                          }
-                        } else {
-                          // if ip is already in list, insert new blocked ip in list
-                          for (j = 0; j < 4; j++) {
-                            if ((blocked_struct_list[k].count == j) || (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0))
-
-                            {
-
-                              if (blocked_struct_list[k].count == j) {
-                                // reached end insert new ip
-                                ip[strlen(ip) - 1] = '\0';
-                                blocked_struct_list[k].blocked_ips_list[j] = malloc(strlen(ip) + 1);
-                                strcpy(blocked_struct_list[k].blocked_ips_list[j], ip);
-                                blocked_struct_list[k].count++;
-                              } else if (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0) {
-                                // blocked ip already in list
-                                printf("%d Already blocked %s ip\n", blocked_struct_list[k].fd_accept, ip);
-                              }
-                              end_outer_loop = 1;
-                              break;
-                            } else {
-                              printf("Not end of list nor already blocked\n");
-                              continue;
-                            }
-                          }
                         }
-                      }
-                      for (int g = 0; g < count_block_indexes; g++) {
-                        printf("Index %d\n", g);
-                        for (int h = 0; h < blocked_struct_list[g].count; h++) {
-                          printf("  Blocked IP %s\n", blocked_struct_list[g].blocked_ips_list[h]);
-                        }
-                      }
+                        remove_from_list(client_list, client_list[i].fdaccept);
+                        sort(client_list);
+                        display(client_list);
+                    } else if (strcmp(cmd, "BLOCK") == 0) {
+                        count_block_indexes = blockClient(buffer, count_block_indexes, blocked_struct_list, sock_index);
+                    } else if (strcmp(cmd, "BLOCKED") == 0) {  
+                        char * blocker_ip = strtok(NULL, "");          
+                        getBlockedList(blocker_ip, blocked_struct_list,client_list, count_block_indexes);
                     } else if (strcmp(cmd, "UNBLOCK") == 0) {
-                      char * block = malloc(strlen(buffer) + 1);
-                      strcpy(block, buffer);
-                      char * block_cmd = strtok(block, " ");
-                      char * ip = strtok(NULL, "");
-
-                      //for UNBlock
-                      printf("cmd:%s\n", cmd);
-                      printf("ip:%s\n", ip);
-                      int unblocked = 0;
-                      ip[strlen(ip) - 1] = '\0';
-                      for (int k = 0; k < count_block_indexes; k++) {
-                        printf("k=%d\nblocked_struct_list[k].fd_accept:%d\nsock_index:%d\n", k, blocked_struct_list[k].fd_accept, sock_index);
-                        if (blocked_struct_list[k].fd_accept == sock_index) {
-                          for (int j = 0; j < blocked_struct_list[k].count; j++) {
-                            printf("j=%d\nblocked_struct_list[k].blocked_ips_list[j]:%s\nip:%s\n", j, blocked_struct_list[k].blocked_ips_list[j], ip);
-                            if (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0) {
-                              unblocked = 1;
-                              printf("Unblocked set to 1\n");
-                              if (j == blocked_struct_list[k].count - 1) {
-
-                                blocked_struct_list[k].blocked_ips_list[j] = '\0';
-                              } else {
-                                // blocked_struct_list[k].blocked_ips_list[j] = malloc(strlen(blocked_struct_list[k].blocked_ips_list[j+1]) + 1);
-                                strcpy(blocked_struct_list[k].blocked_ips_list[j], blocked_struct_list[k].blocked_ips_list[j + 1]);
-                              }
-                            }
-                          }
-                        }
-                        if (unblocked == 1) {
-                          printf("%d Unblocked %s\n", sock_index, ip);
-                          blocked_struct_list[k].count--;
-                          break;
-                        } else {
-                          printf("%d Cannot Unblock %s\n", sock_index, ip);
-                        }
-                      }
-                      for (int g = 0; g < count_block_indexes; g++) {
-                        printf("Index %d\n", g);
-                        for (int h = 0; h < blocked_struct_list[g].count; h++) {
-                          printf("  Blocked IP %s\n", blocked_struct_list[g].blocked_ips_list[h]);
-                        }
-                      }
+                        unblockClient(buffer, count_block_indexes, blocked_struct_list, sock_index);
                     } else if (strcmp(cmd, "SEND") == 0) {
-                      // SEND message
-                      char * send_msg = malloc(strlen(buffer) + 1);
-                      strcpy(send_msg, buffer);
-                      char * send_cmd = strtok(send_msg, " ");
-                      char * ip = strtok(NULL, " ");
-                      char * message1 = strtok(NULL, "");
-                      max_receiver_ips = sendMessage(ip, message1, client_list, blocked_struct_list, message_buffer_list, sock_index, buffer, count_block_indexes, max_receiver_ips);
+                        // SEND message
+                        printf("In send");
+                        char * send_msg = malloc(strlen(buffer) + 1);
+                        strcpy(send_msg, buffer);
+                        char * send_cmd = strtok(send_msg, " ");
+                        char * ip = strtok(NULL, " ");
+                        char * message1 = strtok(NULL, "");
+                        max_receiver_ips = sendMessage(ip, message1, client_list, blocked_struct_list, message_buffer_list, sock_index, buffer, count_block_indexes, max_receiver_ips);
                     } else if (strcmp(cmd, "BROADCAST") == 0) {
-                      // BROADCAST message
-                      char * message1 = strtok(NULL, "");
-
-                      // printf("ip:%s\n", ip);
-                      printf("message1:%s\n", message1);
-                      max_receiver_ips = broadcast(message1, client_list, blocked_struct_list, message_buffer_list, sock_index, buffer, count_block_indexes, max_receiver_ips);
+                        // BROADCAST message
+                        char * message1 = strtok(NULL, "");
+                        printf("message1:%s\n", message1);
+                        max_receiver_ips = broadcast(message1, client_list, blocked_struct_list, message_buffer_list, sock_index, buffer, count_block_indexes, max_receiver_ips);
+                    } else {
+                        printf("\nCMD not found");
                     }
-                  }
-                  free(buffer);
+
                 }
-              }
+                
+                free(buffer);
             }
           }
         }
       }
     }
+  }
+    
+    void unblockClient(char *buffer, int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index) {
+        char * block = malloc(strlen(buffer) + 1);
+        strcpy(block, buffer);
+        char * block_cmd = strtok(block, " ");
+        char * ip = strtok(NULL, "");
+
+        //for UNBlock
+        int unblocked = 0;
+        ip[strlen(ip) - 1] = '\0';
+        for (int k = 0; k < count_block_indexes; k++) {
+            if (blocked_struct_list[k].fd_accept == sock_index) {
+                for (int j = 0; j < blocked_struct_list[k].count; j++) {
+                    if (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0) {
+                        unblocked = 1;
+                        if (j == blocked_struct_list[k].count - 1) {
+                        blocked_struct_list[k].blocked_ips_list[j] = '\0';
+                    } else {
+                        // blocked_struct_list[k].blocked_ips_list[j] = malloc(strlen(blocked_struct_list[k].blocked_ips_list[j+1]) + 1);
+                        strcpy(blocked_struct_list[k].blocked_ips_list[j], blocked_struct_list[k].blocked_ips_list[j + 1]);
+                        }
+                    }
+                }
+            }
+            if (unblocked == 1) {
+                blocked_struct_list[k].count--;
+                break;
+            } else {
+                printf("%d Cannot Unblock %s\n", sock_index, ip);
+            }
+        }
+    }
+
+    void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list[5], struct client_details client_list[100], int count_block_indexes) {
+        int blocker_fdaccept = -1;
+        blocker_ip[strlen(blocker_ip)-1] = '\0';
+        for (int ind = 0; ind < 100; ind++) {
+            if (strcmp(client_list[ind].ip_addr, blocker_ip) == 0) {
+                blocker_fdaccept = client_list[ind].fdaccept;
+                break;
+            }
+        }
+        int counter = 1;
+        for (int k = 0; k < count_block_indexes; k++) {
+        if (blocker_fdaccept == blocked_struct_list[k].fd_accept) {
+            for (int i = 0; i < 100; i++) {
+                for (int j = 0; j < blocked_struct_list[k].count; j++) {
+                        if (strcmp(blocked_struct_list[k].blocked_ips_list[j], client_list[i].ip_addr) == 0) {
+                            printf("%-5d%-35s%-20s%-8d\n", counter, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+                            counter++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    int blockClient(char *buffer, int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index){
+
+        char * block = malloc(strlen(buffer) + 1);
+        strcpy(block, buffer);
+        char * block_cmd = strtok(block, " ");
+        char * ip = strtok(NULL, "");
+
+        //for Block
+        int end_outer_loop = 0;
+        for (int k = 0; k < 5 && end_outer_loop == 0; k++) {
+
+            if ((count_block_indexes == k) || (blocked_struct_list[k].fd_accept != sock_index)) {
+                // if ip not current
+                if (count_block_indexes == k) {
+                    // reached end, insert new ip
+                    ip[strlen(ip) - 1] = '\0';
+                    blocked_struct_list[k].fd_accept = sock_index;
+                    blocked_struct_list[k].count++;
+                    blocked_struct_list[k].blocked_ips_list[0] = malloc(strlen(ip) + 1);
+                    strcpy(blocked_struct_list[k].blocked_ips_list[0], ip);
+                    end_outer_loop = 1;
+                    count_block_indexes++;
+                    break;
+                } else if (blocked_struct_list[k].fd_accept != sock_index) {
+                    // continue to next
+                    continue;
+                }
+            } else {
+                // if ip is already in list, insert new blocked ip in list
+                for (int j = 0; j < 4; j++) {
+                    if ((blocked_struct_list[k].count == j) || (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0)) {
+                        if (blocked_struct_list[k].count == j) {
+                            // reached end insert new ip
+                            ip[strlen(ip) - 1] = '\0';
+                            blocked_struct_list[k].blocked_ips_list[j] = malloc(strlen(ip) + 1);
+                            strcpy(blocked_struct_list[k].blocked_ips_list[j], ip);
+                            blocked_struct_list[k].count++;
+                        } else if (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0) {
+                            // blocked ip already in list
+                            printf("%d Already blocked %s ip\n", blocked_struct_list[k].fd_accept, ip);
+                        }
+                            end_outer_loop = 1;
+                            break;
+                    } else {
+                        printf("Not end of list nor already blocked\n");
+                        continue;
+                    }
+                }
+            }
+        }
+
+        return count_block_indexes;
+    }
+
 
     int sendMessage(char * ip, char * message1, struct client_details client_list[100], struct blocked_details blocked_struct_list[5], struct message_details message_buffer_list[5], int sock_index, char * buffer, int count_block_indexes, int max_receiver_ips) {
 
