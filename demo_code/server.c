@@ -44,6 +44,8 @@
 #include <arpa/inet.h>
 
 #include "server.h"
+#include "../include/global.h"
+#include "../include/logger.h"
 
 #define BACKLOG 5
 #define STDIN 0
@@ -220,14 +222,8 @@ void receive_msg(int argc, char ** argv) {
                     char * cmd = strtok(fn_cp, " ");
                     printf("cmd:%s\n",cmd);
 
-                    if (strcmp(cmd, "LOGOUT")) {
-                        for (i = 0; i < 100; i++) {
-                            if (client_list[i].fdaccept == sock_index)
-                            break;
-                        }
-                        remove_from_list(client_list, client_list[i].fdaccept);
-                        sort(client_list);
-                        display(client_list);
+                    if (strcmp(cmd, "LOGOUT") == 0) {
+                        logout(client_list, sock_index);
                     } else if (strcmp(cmd, "BLOCK") == 0) {
                         count_block_indexes = blockClient(buffer, count_block_indexes, blocked_struct_list, sock_index);
                     } else if (strcmp(cmd, "BLOCKED") == 0) {  
@@ -263,6 +259,17 @@ void receive_msg(int argc, char ** argv) {
     }
   }
     
+    void logout(struct client_details client_list[100], int sock_index) {
+        int i=0;
+        for (i = 0; i < 100; i++) {
+            if (client_list[i].fdaccept == sock_index)
+            break;
+        }
+        remove_from_list(client_list, client_list[i].fdaccept);
+        sort(client_list);
+        display(client_list);
+    } 
+
     void unblockClient(char *buffer, int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index) {
         char * block = malloc(strlen(buffer) + 1);
         strcpy(block, buffer);
@@ -382,24 +389,12 @@ void receive_msg(int argc, char ** argv) {
       int do_not_send = 0;
       char * sender_ip_message;
       for (int i = 0; i < 100; i++) {
-        printf("i %d\n", i);
-        printf("client_list[i].ip_addr, %s\n", client_list[i].ip_addr);
-        printf("ip, %s\n", ip);
 
         if (strcmp(client_list[i].ip_addr, ip) == 0) {
-          printf("count_block_indexes, %d\n", count_block_indexes);
           for (int k = 0; k < count_block_indexes; k++) {
-            printf("k, %d\n", k);
-            printf("blocked_struct_list[k].fd_accept, %d", blocked_struct_list[k].fd_accept);
-            printf("sock_index, %d\n", sock_index);
             if (blocked_struct_list[k].fd_accept == sock_index) {
               for (int j = 0; j < blocked_struct_list[k].count; j++) {
-                printf("j, %d\n", j);
-
-                printf("blocked_struct_list[k].blocked_ips_list[j], %sD\n", blocked_struct_list[k].blocked_ips_list[j]);
-                printf("ip, %s\nA", ip);
                 if (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0) {
-                  printf("Do not send set to 1\n");
                   do_not_send = 1;
                   break;
                 }
@@ -411,24 +406,26 @@ void receive_msg(int argc, char ** argv) {
         }
       }
 
+      char *sender_ip;
       for (int i = 0; i < 100; i++) {
 
         if (client_list[i].fdaccept == sock_index) {
           sender_ip_message = malloc(strlen(client_list[i].ip_addr) + 1);
           strcpy(sender_ip_message, client_list[i].ip_addr);
+          sender_ip = client_list[i].ip_addr;
           break;
         }
       }
       strcat(sender_ip_message, " ");
       strcat(sender_ip_message, message1);
       int message_sent = 0;
-      printf("Sender IP Message:%s ", sender_ip_message);
       if (do_not_send == 0) {
-        printf("In do not send = %d\n", do_not_send);
         if (receiver > 0) {
           if (send(receiver, sender_ip_message, strlen(buffer), 0) == strlen(buffer)) {
-            printf("Done!\n");
             message_sent = 1;
+            successMessage("RELAYED");
+            cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n", sender_ip, ip, message1);
+            endMessage("RELAYED");
           }
           fflush(stdout);
         }
@@ -439,10 +436,7 @@ void receive_msg(int argc, char ** argv) {
       if (message_sent == 0) {
         int message_buffer_updated = 0;
         for (int k = 0; k < max_receiver_ips; k++) {
-          printf("IP message_buffer_list[k].ip_receiver: %s\n", message_buffer_list[k].ip_receiver);
-          printf("IP ip: %s\n", ip);
           if (strcmp(message_buffer_list[k].ip_receiver, ip) == 0) {
-            printf("1 Updating buffer list for %s with message %s\n", message_buffer_list[k].ip_receiver, sender_ip_message);
             message_buffer_list[k].messages_list[message_buffer_list[k].count] = malloc(strlen(sender_ip_message) + 1);
             strcpy(message_buffer_list[k].messages_list[message_buffer_list[k].count], sender_ip_message);
             message_buffer_list[k].count++;
@@ -451,22 +445,15 @@ void receive_msg(int argc, char ** argv) {
           }
         }
         if (message_buffer_updated == 0) {
-          printf("2 Updating buffer list for %s with message %s\n", message_buffer_list[max_receiver_ips].ip_receiver, sender_ip_message);
           message_buffer_list[max_receiver_ips].ip_receiver = malloc(strlen(ip) + 1);
           strcpy(message_buffer_list[max_receiver_ips].ip_receiver, ip);
-          //message_buffer_list[max_receiver_ips].ip_receiver = ip_receiver;
           message_buffer_list[max_receiver_ips].messages_list[message_buffer_list[max_receiver_ips].count] = malloc(strlen(sender_ip_message) + 1);
           strcpy(message_buffer_list[max_receiver_ips].messages_list[message_buffer_list[max_receiver_ips].count], sender_ip_message);
           message_buffer_list[max_receiver_ips].count++;
           max_receiver_ips++;
           message_buffer_updated = 1;
         }
-        for (int g = 0; g < max_receiver_ips; g++) {
-          printf("Receiver IP %s\n", message_buffer_list[g].ip_receiver);
-          for (int h = 0; h < message_buffer_list[g].count; h++) {
-            printf("  Messages %s\n", message_buffer_list[g].messages_list[h]);
-          }
-        }
+        
       }
       return max_receiver_ips;
     }

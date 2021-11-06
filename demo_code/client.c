@@ -138,79 +138,54 @@ int run_client(int argc, char **argv)
                 strcpy(block, cmd);
                 char * msg = strtok(block, " ");
                 
-                if(strcmp(msg,"IP\n") == 0)
-                {
+                if(strcmp(msg,"IP\n") == 0) {
                     getIp();
-                } 
-                else if(strcmp(msg,"AUTHOR\n") == 0)
-                {
+                } else if(strcmp(msg,"AUTHOR\n") == 0) {
                     getAuthor();
-                }
-                else if(strcmp(msg,"PORT\n") == 0)
-                {
+                } else if(strcmp(msg,"PORT\n") == 0) {
                     getPort(argv[2]);
-                }
-                else if (strcmp(msg,"LIST\n") == 0 && server != 0)
-                {
-                    
+                } else if (strcmp(msg,"LIST\n") == 0 && server != 0) {
                     display_list(client_list);
-                }
-                else if (strcmp(msg,"LOGIN") == 0 && counter == 0)
-                {
-                    int i;
+                } else if (strcmp(msg,"LOGIN") == 0 && counter == 0) {
                     char buff[5], *buff2;
                     counter++;
                     subString = strtok(cmd," ");
                     IP = strtok(NULL," ");
                     port = strtok(NULL," ");
                     port[strlen(port) - 1] =0;
-                    printf("%s %s %s %s \n",IP,port, argv[1],argv[2]);
                     server = connect_to_host(IP, port,argv[2]);
                     
                     head_socket = (server > head_socket) ? server : head_socket;
                     FD_SET(server, &master_list);
-                }
-                else if (strcmp(msg,"SEND") == 0 && server != 0)
-                {
+                } else if (strcmp(msg,"SEND") == 0 && server != 0) {
                     char *saveptr;
                     printf("\nSENDing it to the remote server ... ");
                     if(send(server,cmd, strlen(cmd), 0) == strlen(cmd))
                         printf("Done!\n");
                     fflush(stdout);
-                }
-                else if (strcmp(msg,"BROADCAST") == 0 && server != 0)
-                {
+                } else if (strcmp(msg,"BROADCAST") == 0 && server != 0) {
                     char *saveptr;
                     printf("\nBROADCASTing it to the remote server ... ");
                     if(send(server,cmd, strlen(cmd), 0) == strlen(cmd))
                         printf("Done!\n");
                     fflush(stdout);
-                }               
-                else if (strcmp(msg,"BLOCK") == 0 && server != 0)
-                {
+                } else if (strcmp(msg,"BLOCK") == 0 && server != 0) {
                     char *saveptr;
                     printf("\nBLOCKing IP ... ");
                     if(send(server,cmd, strlen(cmd), 0) == strlen(cmd))
                         printf("Done!\n");
                     fflush(stdout);
-                }               
-                else if (strcmp(msg,"UNBLOCK") == 0 && server != 0)
-                {
+                } else if (strcmp(msg,"UNBLOCK") == 0 && server != 0) {
                     char *saveptr;
                     printf("\nUNBLOCKing IP ... ");
                     if(send(server,cmd, strlen(cmd), 0) == strlen(cmd))
                         printf("Done!\n");
                     fflush(stdout);
-                }
-                else if (strcmp(msg,"LOGOUT\n") == 0 && server != 0)
-                {
+                } else if (strcmp(msg,"LOGOUT\n") == 0 && server != 0) {
                     char *saveptr;
                     printf("\nLOGOUTing it to the remote server ... ");
                     char *logout_message =strtok(cmd," ");
-                    if(send(server,logout_message, strlen(logout_message), 0) == strlen(logout_message))
-                    {
-                        printf("Done!\n");
-                        printf("server:%d",server);
+                    if(send(server,logout_message, strlen(logout_message), 0) == strlen(logout_message)) {
                         clear(client_list);
                         close(server);
                         FD_CLR(server,&master_list);
@@ -219,8 +194,7 @@ int run_client(int argc, char **argv)
                         printf("Not done\n");
                     fflush(stdout);
                         
-                }
-                else if(server ==0)
+                } else if(server ==0)
                         printf("Client is not connected");
                 FD_CLR(STDIN,&watch_list);
             } 

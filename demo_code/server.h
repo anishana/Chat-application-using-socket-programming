@@ -31,4 +31,4 @@ void display(struct client_details client_list[100]);
 void sort(struct client_details client_list[100]);
 void adjust_list_ids(struct client_details client_list[100]);
 void remove_from_list(struct client_details client_list[100], int key);
-
+void logout(struct client_details client_list[100], int sock_index);
