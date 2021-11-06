@@ -1,6 +1,6 @@
 /**
 * @client
-* @author  Swetank Kumar Saha <swetankk@buffalo.edu>, Shivang Aggarwal <shivanga@buffalo.edu>
+* @author  Ashley Sachin Anish
 * @version 1.0
 *
 * @section LICENSE
@@ -157,10 +157,10 @@ int run_client(int argc, char **argv)
                 {
                     display_list(client_list);
                 }
-                else if (strcmp(msg, "LOGIN") == 0 && counter == 0)
+                else if (strcmp(msg, "LOGIN") == 0 && server == 0)
                 {
                     char buff[5], *buff2;
-                    counter++;
+                    
                     subString = strtok(cmd, " ");
                     IP = strtok(NULL, " ");
                     if (IP)
@@ -177,6 +177,16 @@ int run_client(int argc, char **argv)
                             FD_SET(server, &master_list);
                         }
                     }
+                }
+				else if (strcmp(msg, "REFRESH\n") == 0)
+                {
+                    list_ptr = 0;
+					char *saveptr;
+					clear(client_list);
+					printf("\nSENDing Refresh to the remote server ... ");
+					if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
+                        printf("Done!\n");
+					fflush(stdout);
                 }
                 else if (strcmp(msg, "SEND") == 0 && server != 0)
                 {
@@ -217,9 +227,12 @@ int run_client(int argc, char **argv)
                     char *logout_message = strtok(cmd, " ");
                     if (send(server, logout_message, strlen(logout_message), 0) == strlen(logout_message))
                     {
+						list_ptr = 0;
                         clear(client_list);
                         close(server);
                         FD_CLR(server, &master_list);
+						server = 0;
+						
                     }
                     else
                         printf("Not done\n");
@@ -250,15 +263,15 @@ int receive_msg_from_server(int server)
         strcpy(block, buffer);
         char *msg = strtok(block, " ");
 
-        if (strcmp(msg, "LOGIN") == 0)
+        if (strcmp(msg, "LOGIN") == 0 || strcmp(msg, "REFRESH") ==0)
         {
             strtok(NULL, "");
             struct client_details *client = malloc(strlen(buffer) + 1);
-            int list_id = 0;
+            printf("%s",buffer);
             char *cmd;
             sscanf(buffer, "%s %d %s %s %d", &cmd, &(client_list[list_ptr].list_id), &(client_list[list_ptr].hostname), &(client_list[list_ptr].ip_addr), &(client_list[list_ptr].port_num));
-            //printf(" Done %d %s %s %d\n", client_list[list_ptr].list_id, client_list[list_ptr].hostname, client_list[list_ptr].ip_addr, client_list[list_ptr].port_num);
-            if (list_ptr == 0)
+            printf(" Done %d %s %s %d\n", client_list[list_ptr].list_id, client_list[list_ptr].hostname, client_list[list_ptr].ip_addr, client_list[list_ptr].port_num);
+            if (list_ptr == 0 && strcmp(msg, "LOGIN") == 0)
             {
                 successMessage("LOGIN");
             }
