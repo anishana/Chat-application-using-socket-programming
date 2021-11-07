@@ -50,7 +50,17 @@
 * @return 0 EXIT_SUCCESS
 */
 //int main(int argc, char **argv)
+struct client_details
+{
+    int list_id;
+    char hostname[50];
+    char ip_addr[100];
+    int fdaccept;
+    int port_num;
+};
 
+void display_list(struct client_details client_list[100]);
+void clear(struct client_details client_list[100]);
 struct client_details client_list[100];
 int list_ptr = 0;
 char *status;
