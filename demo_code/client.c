@@ -32,6 +32,7 @@
 #include "shell_commands.h"
 #include "../include/global.h"
 #include "../include/logger.h"
+#include <stdbool.h>
 
 #define TRUE 1
 #define MSG_SIZE 256
@@ -160,38 +161,38 @@ int run_client(int argc, char **argv)
                 else if (strcmp(msg, "LOGIN") == 0 && server == 0)
                 {
                     char buff[5], *buff2;
-                    
+
                     subString = strtok(cmd, " ");
                     IP = strtok(NULL, " ");
-                    if (IP)
+
+                    if (IP && validateIp(IP))
                     {
-
                         port = strtok(NULL, " ");
-                        if (port)
+                        if (port && validatePort(port))
                         {
-
                             port[strlen(port) - 1] = 0;
                             server = connect_to_host(IP, port, argv[2]);
-
                             head_socket = (server > head_socket) ? server : head_socket;
                             FD_SET(server, &master_list);
                         }
                     }
                 }
-				else if (strcmp(msg, "REFRESH\n") == 0)
+                else if (strcmp(msg, "REFRESH\n") == 0)
                 {
                     list_ptr = 0;
-					char *saveptr;
-					clear(client_list);
-					printf("\nSENDing Refresh to the remote server ... ");
-					if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
+                    char *saveptr;
+                    clear(client_list);
+                    printf("\nSENDing Refresh to the remote server ... ");
+                    if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
                         printf("Done!\n");
-					fflush(stdout);
+                    fflush(stdout);
                 }
                 else if (strcmp(msg, "SEND") == 0 && server != 0)
                 {
                     char *saveptr;
-                    printf("\nSENDing it to the remote server ... ");
+                    printf("\nSENDing it to the remote server ... \n");
+
+                    cmd[strcspn(cmd, "\r\n")] = 0;
                     if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
                         printf("Done!\n");
                     fflush(stdout);
@@ -223,16 +224,15 @@ int run_client(int argc, char **argv)
                 else if (strcmp(msg, "LOGOUT\n") == 0 && server != 0)
                 {
                     char *saveptr;
-                    printf("\nLOGOUTing it to the remote server ... ");
+                    printf("\nLOGOUTing it to the remote server ...\n");
                     char *logout_message = strtok(cmd, " ");
                     if (send(server, logout_message, strlen(logout_message), 0) == strlen(logout_message))
                     {
-						list_ptr = 0;
+                        list_ptr = 0;
                         clear(client_list);
                         close(server);
                         FD_CLR(server, &master_list);
-						server = 0;
-						
+                        server = 0;
                     }
                     else
                         printf("Not done\n");
@@ -262,29 +262,31 @@ int receive_msg_from_server(int server)
         char *block = malloc(strlen(buffer) + 1);
         strcpy(block, buffer);
         char *msg = strtok(block, " ");
-
-        if (strcmp(msg, "LOGIN") == 0 || strcmp(msg, "REFRESH") ==0)
+        if (strcmp(msg, "LOGIN") == 0 || strcmp(msg, "REFRESH") == 0)
         {
             strtok(NULL, "");
             struct client_details *client = malloc(strlen(buffer) + 1);
-            printf("%s",buffer);
             char *cmd;
             sscanf(buffer, "%s %d %s %s %d", &cmd, &(client_list[list_ptr].list_id), &(client_list[list_ptr].hostname), &(client_list[list_ptr].ip_addr), &(client_list[list_ptr].port_num));
-            printf(" Done %d %s %s %d\n", client_list[list_ptr].list_id, client_list[list_ptr].hostname, client_list[list_ptr].ip_addr, client_list[list_ptr].port_num);
+            //printf(" Done %d %s %s %d\n", client_list[list_ptr].list_id, client_list[list_ptr].hostname, client_list[list_ptr].ip_addr, client_list[list_ptr].port_num);
             if (list_ptr == 0 && strcmp(msg, "LOGIN") == 0)
             {
                 successMessage("LOGIN");
+                endMessage("LOGIN");
             }
             list_ptr++;
+            if (send(server, "BUFFER", 6, 0) == 1)
+                printf("Done!\n");
         }
         else
         {
             char *IP = strtok(buffer, " ");
             char *message = strtok(NULL, "");
-
             successMessage("RECEIVED");
             cse4589_print_and_log("msg from:%s\n[msg]:%s\n", IP, message);
             endMessage("RECEIVED");
+
+            fflush(stdout);
         }
 
         fflush(stdout);
@@ -313,6 +315,15 @@ int connect_to_host(char *server_ip, char *server_port, char *port)
     if (fdsocket < 0)
         perror("Failed to create socket");
 
+    struct sockaddr_in my_addr1;
+    my_addr1.sin_family = AF_INET;
+    my_addr1.sin_addr.s_addr = INADDR_ANY;
+    my_addr1.sin_port = htons(atoi(port));
+    //my_addr1.sin_addr.s_addr = inet_addr("10.32.40.213");
+
+    if (!bind(fdsocket, (struct sockaddr *)&my_addr1, sizeof(struct sockaddr_in)) == 0)
+        printf("Unable to bind\n");
+
     /* Connect */
     if (connect(fdsocket, res->ai_addr, res->ai_addrlen) < 0)
         errorMessage("LOGIN");
@@ -323,13 +334,15 @@ int connect_to_host(char *server_ip, char *server_port, char *port)
 void display_list(struct client_details client_list[100])
 {
     int i;
+    successMessage("LIST");
     for (i = 0; i < 100; i++)
     {
         if (client_list[i].list_id == 0)
 
             break;
-        printf("%-5d%-35s%-20s%-8d\n", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+        cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
     }
+    endMessage("LIST");
 }
 void clear(struct client_details client_list[100])
 {
@@ -344,4 +357,16 @@ void clear(struct client_details client_list[100])
             client_list[i].port_num = 0;
         }
     }
+}
+
+bool validateIp(char *ip)
+{
+    struct sockaddr_in sa;
+    int result = inet_pton(AF_INET, ip, &(sa.sin_addr));
+    return result != 0;
+}
+
+bool validatePort(char *port)
+{
+    return ((atoi(port)>1024)&&(atoi(port)<=65535));
 }
