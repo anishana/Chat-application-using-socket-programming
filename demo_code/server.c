@@ -130,7 +130,7 @@ void receive_msg(int argc, char **argv)
   while (TRUE)
   {
     memcpy(&watch_list, &master_list, sizeof(master_list));
-    printf("[PA1-Server@CSE489/589]$ ");
+    cse4589_print_and_log("[PA1-Server@CSE489/589]$ ");
     fflush(stdout);
 
     /*select() system call. This will BLOCK */
@@ -184,7 +184,7 @@ void receive_msg(int argc, char **argv)
             inet_pton(AF_INET, inet_ntoa(client_addr.sin_addr), &ipv4addr);
             he = gethostbyaddr(&ipv4addr, sizeof ipv4addr, AF_INET);
 
-            printf("\n Remote Host connected!\n");
+            // printf("\n Remote Host connected!\n");
             for (i = 0; i < 100; i++)
             {
               if (client_list[i].list_id == 0)
@@ -215,7 +215,7 @@ void receive_msg(int argc, char **argv)
               if (client_list[k].list_id == 0)
                 break;
 
-              sprintf(buffer1, "%s %d %s %s %d", "LOGIN", client_list[k].list_id, client_list[k].hostname, client_list[k].ip_addr, client_list[k].port_num);
+              cse4589_print_and_log(buffer1, "%s %d %s %s %d", "LOGIN", client_list[k].list_id, client_list[k].hostname, client_list[k].ip_addr, client_list[k].port_num);
               send(fdaccept, buffer1, strlen(buffer1), 0) == strlen(buffer1);
             }
 
@@ -233,18 +233,18 @@ void receive_msg(int argc, char **argv)
             if (recv(sock_index, buffer, BUFFER_SIZE, 0) <= 0)
             {
               close(sock_index);
-              printf("Remote Host terminated connection!\n");
+              // printf("Remote Host terminated connection!\n");
 
               /*Remove from watched list */
               FD_CLR(sock_index, &master_list);
             }
             else
             {
-              printf("Message:%s\n", buffer);
+              // printf("Message:%s\n", buffer);
               char *fn_cp = malloc(strlen(buffer) + 1);
               strcpy(fn_cp, buffer);
               char *cmd = strtok(fn_cp, " ");
-              printf("cmd:%s\n", cmd);
+              // printf("cmd:%s\n", cmd);
 
               if (strcmp(cmd, "LOGOUT\n") == 0)
               {
@@ -290,7 +290,7 @@ void receive_msg(int argc, char **argv)
               }
               else
               {
-                printf("\nCMD not found, %s", cmd);
+                // printf("\nCMD not found, %s", cmd);
               }
             }
 
@@ -311,7 +311,7 @@ void refresh(struct client_details client_list[100], int sock_index)
   {
     if (client_list[i].list_id == 0)
       break;
-    sprintf(buffer1, "%s %d %s %s %d", "REFRESH", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+    cse4589_print_and_log(buffer1, "%s %d %s %s %d", "REFRESH", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
     send(sock_index, buffer1, strlen(buffer1), 0);
   }
 }
@@ -408,7 +408,7 @@ void unblockClient(char *buffer, int count_block_indexes, struct blocked_details
     }
     else
     {
-      printf("%d Cannot Unblock %s\n", sock_index, ip);
+      //printf("%d Cannot Unblock %s\n", sock_index, ip);
     }
   }
 }
@@ -436,7 +436,7 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
         {
           if (strcmp(blocked_struct_list[k].blocked_ips_list[j], client_list[i].ip_addr) == 0)
           {
-            printf("%-5d%-35s%-20s%-8d\n", counter, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+            cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", counter, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
             counter++;
           }
         }
@@ -497,14 +497,14 @@ int blockClient(char *buffer, int count_block_indexes, struct blocked_details bl
           else if (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0)
           {
             // blocked ip already in list
-            printf("%d Already blocked %s ip\n", blocked_struct_list[k].fd_accept, ip);
+            // printf("%d Already blocked %s ip\n", blocked_struct_list[k].fd_accept, ip);
           }
           end_outer_loop = 1;
           break;
         }
         else
         {
-          printf("Not end of list nor already blocked\n");
+          // printf("Not end of list nor already blocked\n");
           continue;
         }
       }
@@ -517,8 +517,8 @@ int blockClient(char *buffer, int count_block_indexes, struct blocked_details bl
 int sendMessage(char *ip, char *message1, struct client_details client_list[100], struct blocked_details blocked_struct_list[5], struct message_details message_buffer_list[5], int sock_index, int count_block_indexes, int max_receiver_ips)
 {
 
-  printf("ip:%s\n", ip);
-  printf("message1:%s\n", message1);
+  // printf("ip:%s\n", ip);
+  // printf("message1:%s\n", message1);
   int receiver = 0;
   int do_not_send = 0;
   char *sender_ip_message;
@@ -576,7 +576,7 @@ int sendMessage(char *ip, char *message1, struct client_details client_list[100]
   }
   else
   {
-    printf("%d has blocked ip %s. Hence message not sent\n", sock_index, ip);
+    // printf("%d has blocked ip %s. Hence message not sent\n", sock_index, ip);
   }
 
   if (message_sent == 0)
@@ -654,13 +654,15 @@ int broadcast(char *message1, struct client_details client_list[100], struct blo
       if (do_not_send == 0)
       {
         if (send(client_list[i].fdaccept, sender_ip_message, strlen(sender_ip_message), 0) == strlen(sender_ip_message))
-          printf("Done!\n");
+          {
+           // printf("Done!\n");
+          }
         message_sent = 1;
         fflush(stdout);
       }
       else
       {
-        printf("%d has blocked ip %s. Hence message not sent\n", sock_index, client_list[i].ip_addr);
+        // printf("%d has blocked ip %s. Hence message not sent\n", sock_index, client_list[i].ip_addr);
       }
       if (message_sent == 0)
       {
@@ -764,13 +766,14 @@ void remove_from_list(struct client_details client_list[100], int key)
 
 void display(struct client_details client_list[100])
 {
+  successMessage("LIST");
   int i;
   for (i = 0; i < 100; i++)
   {
     if (client_list[i].list_id == 0)
       break;
-    successMessage("LIST");
     cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
-    endMessage("LIST");
   }
+  endMessage("LIST");
+
 }

@@ -182,49 +182,92 @@ int run_client(int argc, char **argv)
                     list_ptr = 0;
                     char *saveptr;
                     clear(client_list);
-                    printf("\nSENDing Refresh to the remote server ... ");
+                    // printf("\nSENDing Refresh to the remote server ... ");
                     if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
-                        printf("Done!\n");
+                    {
+                        // printf("Done!\n");
+                        successMessage("REFRESH");
+                        endMessage("REFRESH");                        
+                    }
                     fflush(stdout);
                 }
                 else if (strcmp(msg, "SEND") == 0 && server != 0)
                 {
+                    // exception handling needs to be done
                     char *saveptr;
-                    printf("\nSENDing it to the remote server ... \n");
+                    // printf("\nSENDing it to the remote server ... \n");
 
                     cmd[strcspn(cmd, "\r\n")] = 0;
                     if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
-                        printf("Done!\n");
+                    {
+                        // printf("Done!\n");
+                        successMessage("SEND");
+                        endMessage("SEND");                        
+                    }
                     fflush(stdout);
                 }
                 else if (strcmp(msg, "BROADCAST") == 0 && server != 0)
                 {
+                    // exception handling needs to be done
                     char *saveptr;
-                    printf("\nBROADCASTing it to the remote server ... ");
+                    // printf("\nBROADCASTing it to the remote server ... ");
                     if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
-                        printf("Done!\n");
+                    {
+                        // printf("Done!\n");
+                        successMessage("BROADCAST");
+                        endMessage("BROADCAST");
+                    }
                     fflush(stdout);
                 }
                 else if (strcmp(msg, "BLOCK") == 0 && server != 0)
                 {
+                    // exception handling needs to be done
                     char *saveptr;
-                    printf("\nBLOCKing IP ... ");
+                    // printf("\nBLOCKing IP ... ");
                     if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
-                        printf("Done!\n");
+                    {
+                        successMessage("BLOCK");
+                        endMessage("BLOCK");
+                    }
                     fflush(stdout);
                 }
                 else if (strcmp(msg, "UNBLOCK") == 0 && server != 0)
                 {
+                    // exception handling needs to be done
                     char *saveptr;
-                    printf("\nUNBLOCKing IP ... ");
+                    // printf("\nUNBLOCKing IP ... ");
                     if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
-                        printf("Done!\n");
+                    {
+                        // printf("Done!\n");
+                        successMessage("UNBLOCK");
+                        endMessage("UNBLOCK");
+                    }
                     fflush(stdout);
                 }
                 else if (strcmp(msg, "LOGOUT\n") == 0 && server != 0)
                 {
                     char *saveptr;
-                    printf("\nLOGOUTing it to the remote server ...\n");
+                    //printf("\nLOGOUTing it to the remote server ...\n");
+                    char *logout_message = strtok(cmd, " ");
+                    if (send(server, logout_message, strlen(logout_message), 0) == strlen(logout_message))
+                    {
+                        successMessage("LOGOUT");
+                        list_ptr = 0;
+                        clear(client_list);
+                        close(server);
+                        FD_CLR(server, &master_list);
+                        server = 0;
+                        endMessage("LOGOUT");
+                    }
+                    else
+                        printf("Not done\n");
+                    fflush(stdout);
+                    
+                }
+                else if (strcmp(msg, "EXIT\n") == 0 && server != 0)
+                {
+                    char *saveptr;
+                    // printf("\nEXITing it to the remote server ...\n");
                     char *logout_message = strtok(cmd, " ");
                     if (send(server, logout_message, strlen(logout_message), 0) == strlen(logout_message))
                     {
@@ -237,7 +280,8 @@ int run_client(int argc, char **argv)
                     else
                         printf("Not done\n");
                     fflush(stdout);
-                }
+                    exit(0);
+                }                
                 else if (server == 0)
                     printf("Client is not connected");
                 FD_CLR(STDIN, &watch_list);
