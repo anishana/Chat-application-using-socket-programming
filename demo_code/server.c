@@ -160,6 +160,10 @@ void receive_msg(int argc, char **argv)
             if (fgets(msg, MSG_SIZE - 1, stdin) == NULL) //Mind the newline character that will be written to msg
               exit(-1);
 
+            char *fn_cp = malloc(strlen(msg) + 1);
+            strcpy(fn_cp, msg);
+            char *cmd = strtok(fn_cp, " ");
+
             if (strcmp(msg, "IP\n") == 0)
             {
               getIp();
@@ -179,6 +183,14 @@ void receive_msg(int argc, char **argv)
             else if (strcmp(msg, "PORT\n") == 0)
             {
               getPort(argv[2]);
+            }
+            else if (strcmp(cmd, "BLOCKED") == 0)
+            {
+              // char *block_msg = malloc(strlen(msg) + 1);
+              // strcpy(block_msg, msg);
+              // strtok(block_msg, " ");
+              char *blocker_ip = strtok(NULL, "");
+              getBlockedList(blocker_ip, blocked_struct_list, client_list, count_block_indexes);
             }
           }
           else if (sock_index == server_socket)
@@ -284,11 +296,6 @@ void receive_msg(int argc, char **argv)
               else if (strcmp(cmd, "BLOCK") == 0)
               {
                 count_block_indexes = blockClient(buffer, count_block_indexes, blocked_struct_list, sock_index);
-              }
-              else if (strcmp(cmd, "BLOCKED") == 0)
-              {
-                char *blocker_ip = strtok(NULL, "");
-                getBlockedList(blocker_ip, blocked_struct_list, client_list, count_block_indexes);
               }
               else if (strcmp(cmd, "UNBLOCK") == 0)
               {
@@ -453,6 +460,7 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
 {
   int blocker_fdaccept = -1;
   blocker_ip[strlen(blocker_ip) - 1] = '\0';
+
   for (int ind = 0; ind < 100; ind++)
   {
     if (strcmp(client_list[ind].ip_addr, blocker_ip) == 0)
@@ -464,8 +472,9 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
   int counter = 1;
   for (int k = 0; k < count_block_indexes; k++)
   {
-    if (blocker_fdaccept == blocked_struct_list[k].fd_accept)
+    if (blocker_fdaccept == blocked_struct_list[k].fd_accept && blocked_struct_list[k].count > 0)
     {
+      successMessage("BLOCKED");
       for (int i = 0; i < 100; i++)
       {
         for (int j = 0; j < blocked_struct_list[k].count; j++)
@@ -477,6 +486,8 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
           }
         }
       }
+      endMessage("BLOCKED");
+      break;
     }
   }
 }
@@ -870,7 +881,7 @@ void display(struct client_details client_list[100])
   for (i = 0; i < 100; i++)
   {
     if (client_list[i].list_id == 0)
-     break;
+      break;
     cse4589_print_and_log("%-5d%-5d%-35s%-20s%-8d\n", (i + 1), client_list[i].fdaccept, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
   }
   endMessage("LIST");
@@ -884,8 +895,8 @@ void getStatistics(struct client_details stats[5])
   {
     if (stats[i].list_id != 0)
     {
-    char *status = (stats[i].is_logged_in == 1) ? "logged-in" : "logged-out";
-    cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n", (i + 1), stats[i].hostname, stats[i].num_msg_sent, stats[i].num_msg_rcv, status);
+      char *status = (stats[i].is_logged_in == 1) ? "logged-in" : "logged-out";
+      cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n", (i + 1), stats[i].hostname, stats[i].num_msg_sent, stats[i].num_msg_rcv, status);
     }
   }
   endMessage("STATISTICS");

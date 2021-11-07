@@ -162,12 +162,15 @@ int run_client(int argc, char **argv)
                         {
                             port[strlen(port) - 1] = 0;
                             server = connect_to_host(IP, port, argv[2]);
-                            head_socket = (server > head_socket) ? server : head_socket;
-                            FD_SET(server, &master_list);
+                            if (server > 0)
+                            {
+                                head_socket = (server > head_socket) ? server : head_socket;
+                                FD_SET(server, &master_list);
+                            }
                         }
                     }
                 }
-                else if (strcmp(msg, "REFRESH\n") == 0)
+                else if (strcmp(msg, "REFRESH\n") == 0  && server != 0)
                 {
                     list_ptr = 0;
                     char *saveptr;
@@ -253,7 +256,7 @@ int run_client(int argc, char **argv)
                         printf("Not done\n");
                     fflush(stdout);
                 }
-                else if (strcmp(msg, "EXIT\n") == 0 && server != 0)
+                else if (strcmp(msg, "EXIT\n") == 0)
                 {
                     char *saveptr;
                     // printf("\nEXITing it to the remote server ...\n");
@@ -355,13 +358,22 @@ int connect_to_host(char *server_ip, char *server_port, char *port)
     //my_addr1.sin_addr.s_addr = inet_addr("10.32.40.213");
 
     if (!bind(fdsocket, (struct sockaddr *)&my_addr1, sizeof(struct sockaddr_in)) == 0)
-        printf("Unable to bind\n");
-
-    /* Connect */
-    if (connect(fdsocket, res->ai_addr, res->ai_addrlen) < 0)
+    {
         errorMessage("LOGIN");
+        endMessage("LOGIN");
+        //perror("Unable to bind\n");
+    }
+    else
+    {
+        /* Connect */
+        if (connect(fdsocket, res->ai_addr, res->ai_addrlen) < 0)
+            errorMessage("LOGIN");
+        else
+            successMessage("LOGIN");
+        endMessage("LOGIN");
+        freeaddrinfo(res);
+    }
 
-    freeaddrinfo(res);
     return fdsocket;
 }
 void display_list(struct client_details client_list[100])
