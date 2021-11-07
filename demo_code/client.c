@@ -51,18 +51,8 @@
 */
 //int main(int argc, char **argv)
 
-struct client_details
-{
-    int list_id;
-    char hostname[50];
-    char ip_addr[100];
-    int fdaccept;
-    int port_num;
-};
 struct client_details client_list[100];
 int list_ptr = 0;
-void display_list(struct client_details client_list[100]);
-void clear(struct client_details client_list[100]);
 char *status;
 int run_client(int argc, char **argv)
 {
@@ -77,7 +67,7 @@ int run_client(int argc, char **argv)
     fd_set master_list, watch_list;
     int client_socket = -1;
     struct sockaddr_in client;
-
+    initialiseListsClient();
     /*for(int i=0; i<argc;i++)
         {
             printf("argv.%d:%s\n",i,argv[i]);
@@ -187,7 +177,7 @@ int run_client(int argc, char **argv)
                     {
                         // printf("Done!\n");
                         successMessage("REFRESH");
-                        endMessage("REFRESH");                        
+                        endMessage("REFRESH");
                     }
                     fflush(stdout);
                 }
@@ -202,7 +192,7 @@ int run_client(int argc, char **argv)
                     {
                         // printf("Done!\n");
                         successMessage("SEND");
-                        endMessage("SEND");                        
+                        endMessage("SEND");
                     }
                     fflush(stdout);
                 }
@@ -262,7 +252,6 @@ int run_client(int argc, char **argv)
                     else
                         printf("Not done\n");
                     fflush(stdout);
-                    
                 }
                 else if (strcmp(msg, "EXIT\n") == 0 && server != 0)
                 {
@@ -281,7 +270,7 @@ int run_client(int argc, char **argv)
                         printf("Not done\n");
                     fflush(stdout);
                     exit(0);
-                }                
+                }
                 else if (server == 0)
                     printf("Client is not connected");
                 FD_CLR(STDIN, &watch_list);
@@ -412,5 +401,15 @@ bool validateIp(char *ip)
 
 bool validatePort(char *port)
 {
-    return ((atoi(port)>1024)&&(atoi(port)<=65535));
+    return ((atoi(port) > 1024) && (atoi(port) <= 65535));
+}
+
+void initialiseListsClient()
+{
+    for (int i = 0; i < 100; i++)
+    {
+        client_list[i].list_id = 0;
+        client_list[i].fdaccept = 0;
+        client_list[i].port_num = 0;
+    }
 }
