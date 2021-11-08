@@ -295,7 +295,7 @@ void receive_msg(int argc, char **argv)
               }
               else if (strcmp(cmd, "BLOCK") == 0)
               {
-                count_block_indexes = blockClient(buffer, count_block_indexes, blocked_struct_list, sock_index);
+                count_block_indexes = blockClient(buffer, client_list, count_block_indexes, blocked_struct_list, sock_index);
               }
               else if (strcmp(cmd, "UNBLOCK") == 0)
               {
@@ -315,6 +315,7 @@ void receive_msg(int argc, char **argv)
               {
                 // BROADCAST message
                 char *message1 = strtok(NULL, "");
+                printf("message1:%s\n", message1);
                 max_receiver_ips = broadcast(message1, client_list, stats, blocked_struct_list, message_buffer_list, sock_index, count_block_indexes, max_receiver_ips);
               }
               else if (strcmp(cmd, "BUFFER") == 0)
@@ -479,6 +480,7 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
       {
         for (int j = 0; j < blocked_struct_list[k].count; j++)
         {
+
           if (strcmp(blocked_struct_list[k].blocked_ips_list[j], client_list[i].ip_addr) == 0)
           {
             cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", counter, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
@@ -492,7 +494,7 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
   }
 }
 
-int blockClient(char *buffer, int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index)
+int blockClient(char *buffer, struct client_details client_list[100], int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index)
 {
 
   char *block = malloc(strlen(buffer) + 1);
@@ -502,6 +504,17 @@ int blockClient(char *buffer, int count_block_indexes, struct blocked_details bl
 
   //for Block
   int end_outer_loop = 0;
+  char *senderIp;
+  for (int i = 0; i < 100; i++)
+  {
+    if (client_list[i].list_id != 0 && sock_index == client_list[i].fdaccept)
+    {
+      senderIp = malloc(strlen(client_list[i].ip_addr) + 1);
+      strcpy(senderIp, client_list[i].ip_addr);
+      break;
+    }
+  }
+
   for (int k = 0; k < 5 && end_outer_loop == 0; k++)
   {
 
@@ -513,6 +526,7 @@ int blockClient(char *buffer, int count_block_indexes, struct blocked_details bl
         // reached end, insert new ip
         ip[strlen(ip) - 1] = '\0';
         blocked_struct_list[k].fd_accept = sock_index;
+        blocked_struct_list[k].ip_addr = senderIp;
         blocked_struct_list[k].count++;
         blocked_struct_list[k].blocked_ips_list[0] = malloc(strlen(ip) + 1);
         strcpy(blocked_struct_list[k].blocked_ips_list[0], ip);
@@ -569,29 +583,41 @@ int sendMessage(char *ip, char *message1, struct client_details client_list[100]
   int receiver = 0;
   int do_not_send = 0;
   char *sender_ip_message;
-  int index = 0;
+  int index = -1;
   int senderIndex = 0;
-  for (int i = 0; i < 100; i++)
-  {
 
-    if (strcmp(client_list[i].ip_addr, ip) == 0)
+  //Get the index of the sender
+  for (int r = 0; r < 100; r++)
+  {
+    if (client_list[r].list_id != 0 && client_list[r].fdaccept == sock_index)
     {
-      for (int k = 0; k < count_block_indexes; k++)
+      index = r;
+      break;
+    }
+  }
+
+  //Decide if the receiver has blocked the sender
+  for (int i = 0; i < 5; i++)
+  {
+    if (blocked_struct_list[i].ip_addr != NULL && strcmp(blocked_struct_list[i].ip_addr, ip) == 0)
+    {
+      for (int k = 0; k < 4; k++)
       {
-        if (blocked_struct_list[k].fd_accept == sock_index)
+        if (index > 0 && blocked_struct_list[i].blocked_ips_list[k] != NULL && client_list[index].ip_addr != NULL && strcmp(blocked_struct_list[i].blocked_ips_list[k], client_list[index].ip_addr) == 0)
         {
-          for (int j = 0; j < blocked_struct_list[k].count; j++)
-          {
-            if (strcmp(blocked_struct_list[k].blocked_ips_list[j], ip) == 0)
-            {
-              do_not_send = 1;
-              break;
-            }
-          }
+          do_not_send = 1;
+          break;
         }
       }
-      receiver = client_list[i].fdaccept;
-      index = i;
+      break;
+    }
+  }
+
+  for (int r = 0; r < 100; r++)
+  {
+    if (client_list[r].list_id != 0 && strcmp(client_list[r].ip_addr, ip) == 0)
+    {
+      receiver = client_list[r].fdaccept;
       break;
     }
   }
@@ -708,31 +734,49 @@ int broadcast(char *message1, struct client_details client_list[100], struct cli
     }
   }
 
+  strcat(sender_ip_message, " ");
+  strcat(sender_ip_message, message1);
+  sender_ip_message[strlen(sender_ip_message) - 1] = 0;
+
+  message1[strlen(message1) - 1] = 0;
   for (int i = 0; i < 100; i++)
   {
     int message_sent = 0;
     if (client_list[i].list_id != 0 && sock_index != client_list[i].fdaccept && client_list[i].fdaccept != 0)
     {
-      printf("client_list[i].ip_addr:%s\n", client_list[i].ip_addr);
-      printf("client_list[i].fdaccept:%d\n", client_list[i].fdaccept);
       int do_not_send = 0;
-      for (int k = 0; k < count_block_indexes; k++)
+      // for (int k = 0; k < count_block_indexes; k++)
+      // {
+      //   if (blocked_struct_list[k].fd_accept == sock_index)
+      //   {
+      //     for (int j = 0; j < blocked_struct_list[k].count; j++)
+      //     {
+      //       if (strcmp(blocked_struct_list[k].blocked_ips_list[j], client_list[i].ip_addr) == 0)
+      //       {
+      //         do_not_send = 1;
+      //         break;
+      //       }
+      //     }
+      //   }
+      // }
+
+      //Decide if the receiver has blocked the sender
+      for (int r = 0; r < 5; r++)
       {
-        if (blocked_struct_list[k].fd_accept == sock_index)
+        if (blocked_struct_list[r].ip_addr != NULL && strcmp(blocked_struct_list[r].ip_addr, client_list[i].ip_addr) == 0)
         {
-          for (int j = 0; j < blocked_struct_list[k].count; j++)
+          for (int k = 0; k < 4; k++)
           {
-            if (strcmp(blocked_struct_list[k].blocked_ips_list[j], client_list[i].ip_addr) == 0)
+            if (blocked_struct_list[r].blocked_ips_list[k] != NULL && sender_ip != NULL && strcmp(blocked_struct_list[r].blocked_ips_list[k], sender_ip) == 0)
             {
               do_not_send = 1;
               break;
             }
           }
+          break;
         }
       }
 
-      strcat(sender_ip_message, " ");
-      strcat(sender_ip_message, message1);
       if (do_not_send == 0)
       {
         if (send(client_list[i].fdaccept, sender_ip_message, strlen(sender_ip_message), 0) == strlen(sender_ip_message))
@@ -929,4 +973,9 @@ void initialiseLists(struct client_details client_list[100], struct client_detai
 
     message_buffer_list[i].count = 0;
   }
+}
+
+void sendAcknowledgement(char *cmd_str, int fdaccept)
+{
+  send(fdaccept, cmd_str, strlen(strlen)+1, 0);
 }

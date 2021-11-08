@@ -12,6 +12,7 @@ struct client_details {
 struct blocked_details {
   int count;
   int fd_accept;
+  char *ip_addr;
   char * blocked_ips_list[4]; // = {NULL, NULL, NULL, NULL};
 };
 
@@ -29,7 +30,7 @@ void receive_msg(int argc, char **argv);
 int sendMessage(char * ip, char * message1, struct client_details client_list[100], struct client_details stats[5], struct blocked_details blocked_struct_list[5], struct message_details message_buffer_list[5], int sock_index, int count_block_indexes, int max_receiver_ips);
 int broadcast(char * message1, struct client_details client_list[100], struct client_details stats[5], struct blocked_details blocked_struct_list[5], struct message_details message_buffer_list[5], int sock_index, int count_block_indexes, int max_receiver_ips);
 void unblockClient(char *buffer, int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index);
-int blockClient(char *buffer, int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index);
+int blockClient(char *buffer, struct client_details client_list[100], int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index);
 void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list[5], struct client_details client_list[100], int count_block_indexes);
 
 void display(struct client_details client_list[100]);
@@ -41,3 +42,4 @@ void refresh(struct client_details client_list[100], int sock_index);
 int sendBufferedMessages(struct client_details client_list[100], struct client_details stats[5], struct message_details message_buffer_list[5],  int sock_index, int max_receiver_ips, int count_block_indexes, struct blocked_details blocked_struct_list[5]);
 void getStatistics(struct client_details stats[5]);
 void initialiseLists(struct client_details client_list[100], struct client_details stats[5], struct blocked_details blocked_struct_list[5], struct message_details message_buffer_list[5]);
+void sendAcknowledgement(char *cmd_str, int fdaccept);
