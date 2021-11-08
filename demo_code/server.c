@@ -894,9 +894,6 @@ int broadcast(char *message1, struct client_details client_list[100], struct cli
       }
       else
       {
-        successMessage("RELAYED");
-        cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n", sender_ip, "255.255.255.255", message1);
-        endMessage("RELAYED");
 
         int a = 0, b = 0;
 
@@ -923,6 +920,9 @@ int broadcast(char *message1, struct client_details client_list[100], struct cli
       }
     }
   }
+  successMessage("RELAYED");
+  cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n", sender_ip, "255.255.255.255", message1);
+  endMessage("RELAYED");
   return max_receiver_ips;
 }
 
