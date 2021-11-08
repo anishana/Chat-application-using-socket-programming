@@ -64,6 +64,9 @@ void clear(struct client_details client_list[100]);
 struct client_details client_list[100];
 int list_ptr = 0;
 char *status;
+bool validateIpInList(char *ip);
+bool validatePort(char *port);
+
 int run_client(int argc, char **argv)
 {
     int server = 0;
@@ -545,7 +548,7 @@ bool validateIpInList(char *ip)
     {
         if (client_list[i].list_id == 0)
             break;
-        if (strcmp(client_list[i].ip_addr, ip) == 0)
+        if (client_list[i].ip_addr != NULL && ip != NULL && strcmp(client_list[i].ip_addr, ip) == 0)
         {
             return true;
         }

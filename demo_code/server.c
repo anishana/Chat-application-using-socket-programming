@@ -73,6 +73,8 @@ int run_server(int argc, char **argv)
   return 0;
 }
 
+bool validateIpInListServer(struct client_details client_list[100], char *ip);
+
 void receive_msg(int argc, char **argv)
 {
 
@@ -190,7 +192,9 @@ void receive_msg(int argc, char **argv)
               // strcpy(block_msg, msg);
               // strtok(block_msg, " ");
               char *blocker_ip = strtok(NULL, "");
-              if (validateIp(blocker_ip))
+
+              blocker_ip[strcspn(blocker_ip, "\r\n")] = 0;
+              if (validateIp(blocker_ip) && validateIpInListServer(client_list, blocker_ip))
               {
                 getBlockedList(blocker_ip, blocked_struct_list, client_list, count_block_indexes);
               }
@@ -502,7 +506,6 @@ void unblockClient(char *buffer, int count_block_indexes, struct client_details 
 void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list[5], struct client_details client_list[100], int count_block_indexes)
 {
   int blocker_fdaccept = -1;
-  blocker_ip[strlen(blocker_ip) - 1] = '\0';
 
   /*for (int ind = 0; ind < 100; ind++)
   {
@@ -512,10 +515,15 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
       break;
     }
   }*/
+
+  struct client_details blocked_list[100];
   int counter = 1;
+  printf("count_block_indexes:%d\n",count_block_indexes);
   for (int k = 0; k < count_block_indexes; k++)
   {
-    if (blocker_ip == blocked_struct_list[k].ip_addr && blocked_struct_list[k].count > 0)
+    printf("blocked_struct_list[k].ip_addr:%s\n",blocked_struct_list[k].ip_addr);
+    printf("blocker_ip:%s\n",blocker_ip);
+    if (blocked_struct_list[k].ip_addr!=NULL && blocker_ip!=NULL && strcmp(blocker_ip,blocked_struct_list[k].ip_addr) == 0 && blocked_struct_list[k].count > 0)
     {
       successMessage("BLOCKED");
       for (int i = 0; i < 100; i++)
@@ -523,8 +531,15 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
         for (int j = 0; j < blocked_struct_list[k].count; j++)
         {
 
-          if (strcmp(blocked_struct_list[k].blocked_ips_list[j], client_list[i].ip_addr) == 0)
+          if (blocked_struct_list[k].blocked_ips_list[j]!=NULL && client_list[i].ip_addr!=NULL && strcmp(blocked_struct_list[k].blocked_ips_list[j], client_list[i].ip_addr) == 0)
           {
+            //  blocked_list[counter].list_id = counter;
+            //  strcpy(blocked_list[counter].hostname, client_list[i].hostname);
+            //  strcpy(blocked_list[counter].ip_addr, client_list[i].ip_addr);
+            //  blocked_list[counter].hostname = client_list[i].hostname;
+            //  blocked_list[counter].ip_addr = client_list[i].ip_addr;
+            //  blocked_list[counter].port_num = client_list[i].port_num;
+
             cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", counter, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
             counter++;
           }
@@ -534,6 +549,15 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
       break;
     }
   }
+
+  /*sort(blocked_list);
+
+  successMessage("BLOCKED");
+  for (int i = 0; i < 100; i++)
+  {
+    cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", i, blocked_list[i].hostname, blocked_list[i].ip_addr, blocked_list[i].port_num);
+  }
+  endMessage("BLOCKED");*/
 }
 
 int blockClient(char *buffer, struct client_details client_list[100], int count_block_indexes, struct blocked_details blocked_struct_list[5], int sock_index)
@@ -564,19 +588,21 @@ int blockClient(char *buffer, struct client_details client_list[100], int count_
     {
       for (int k = 0; k < 4; k++)
       {
-        if (blocked_struct_list[i].blocked_ips_list[k] != NULL && strcmp(blocked_struct_list[i].blocked_ips_list[k], ip))
+        if (blocked_struct_list[i].blocked_ips_list[k] != NULL && strcmp(blocked_struct_list[i].blocked_ips_list[k], ip) == 0)
         {
           sendAcknowledgement("BLOCKERROR", sock_index);
           breakout = false;
           break;
         }
-        else
+        else if(k == blocked_struct_list[i].count)
         {
           ip[strlen(ip) - 1] = '\0';
           blocked_struct_list[i].blocked_ips_list[k] = malloc(strlen(ip) + 1);
           strcpy(blocked_struct_list[i].blocked_ips_list[k], ip);
-          blocked_struct_list[k].count++;
+          blocked_struct_list[i].count++;
           sendAcknowledgement("BLOCKSUCCESS", sock_index);
+          breakout = false;
+          break;
         }
       }
     }
@@ -999,20 +1025,7 @@ void display(struct client_details client_list[100])
   {
     if (client_list[i].list_id == 0)
       break;
-
-    char *ip = malloc(strlen(client_list[i].ip_addr) + 1);
-    memset(ip, '\0', strlen(client_list[i].ip_addr) + 1);
-    strcpy(ip, client_list[i].ip_addr);
-    ip[strlen(ip)] = '\0';
-
-    char *hostname = malloc(strlen(client_list[i].hostname) + 1);
-    memset(hostname, '\0', strlen(client_list[i].ip_addr) + 1);
-    strcpy(hostname, client_list[i].hostname);
-    hostname[strlen(hostname)] = '\0';
-
-    cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", (i + 1), hostname, ip, client_list[i].port_num);
-    free(ip);
-    free(hostname);
+    cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", (i + 1), client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
   }
   endMessage("LIST");
 }
@@ -1025,17 +1038,8 @@ void getStatistics(struct client_details stats[5])
   {
     if (stats[i].list_id != 0)
     {
-      char *status = (stats[i].is_logged_in == 1) ? "logged-in\0" : "logged-out\0";
-      char *ip = malloc(strlen(stats[i].ip_addr) + 1);
-      memset(ip, '\0', strlen(stats[i].ip_addr) + 1);
-      strcpy(ip, stats[i].ip_addr);
-
-      char *hostname = malloc(strlen(stats[i].hostname) + 1);
-      memset(hostname, '\0', strlen(stats[i].ip_addr) + 1);
-      strcpy(hostname, stats[i].hostname);
-      cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n", (i + 1), hostname, stats[i].num_msg_sent, stats[i].num_msg_rcv, status);
-      free(ip);
-      free(hostname);
+      char *status = (stats[i].is_logged_in == 1) ? "logged-in" : "logged-out";
+      cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n", (i + 1), stats[i].hostname, stats[i].num_msg_sent, stats[i].num_msg_rcv, status);
     }
   }
   endMessage("STATISTICS");
@@ -1073,4 +1077,18 @@ void initialiseLists(struct client_details client_list[100], struct client_detai
 void sendAcknowledgement(char *cmd_str, int fdaccept)
 {
   send(fdaccept, cmd_str, strlen(cmd_str) + 1, 0);
+}
+
+bool validateIpInListServer(struct client_details client_list[100], char *ip)
+{
+  for (int i = 0; i < 100; i++)
+  {
+    if (client_list[i].list_id == 0)
+      break;
+    if (client_list[i].ip_addr != NULL && ip != NULL && strcmp(client_list[i].ip_addr, ip) == 0)
+    {
+      return true;
+    }
+  }
+  return false;
 }
