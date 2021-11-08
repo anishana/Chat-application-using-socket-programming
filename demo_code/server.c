@@ -518,11 +518,8 @@ void getBlockedList(char *blocker_ip, struct blocked_details blocked_struct_list
 
   struct client_details blocked_list[100];
   int counter = 1;
-  printf("count_block_indexes:%d\n",count_block_indexes);
   for (int k = 0; k < count_block_indexes; k++)
   {
-    printf("blocked_struct_list[k].ip_addr:%s\n",blocked_struct_list[k].ip_addr);
-    printf("blocker_ip:%s\n",blocker_ip);
     if (blocked_struct_list[k].ip_addr!=NULL && blocker_ip!=NULL && strcmp(blocker_ip,blocked_struct_list[k].ip_addr) == 0 && blocked_struct_list[k].count > 0)
     {
       successMessage("BLOCKED");

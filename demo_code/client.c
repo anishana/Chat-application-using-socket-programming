@@ -546,8 +546,12 @@ bool validateIpInList(char *ip)
 {
     for (int i = 0; i < 100; i++)
     {
+        
         if (client_list[i].list_id == 0)
             break;
+        // printf("client_list[i].ip_addr:%s\n",client_list[i].ip_addr);
+        // printf("ip:%s\n",ip);
+
         if (client_list[i].ip_addr != NULL && ip != NULL && strcmp(client_list[i].ip_addr, ip) == 0)
         {
             return true;
