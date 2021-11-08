@@ -38,8 +38,9 @@ void getIp()
 
 void getAuthor() 
 {
+	char *your_ubit_name = "anishana";
 	successMessage("AUTHOR");
-	cse4589_print_and_log("I, sachinge, have read and understood the course academic integrity policy.\n");
+	cse4589_print_and_log("I, %s, have read and understood the course academic integrity policy.\n", your_ubit_name);
 	endMessage("AUTHOR");	
 
 }

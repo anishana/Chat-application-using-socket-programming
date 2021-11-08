@@ -926,7 +926,7 @@ void display(struct client_details client_list[100])
   {
     if (client_list[i].list_id == 0)
       break;
-    cse4589_print_and_log("%-5d%-5d%-35s%-20s%-8d\n", (i + 1), client_list[i].fdaccept, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+    cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", (i + 1), client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
   }
   endMessage("LIST");
 }

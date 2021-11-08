@@ -179,8 +179,13 @@ int run_client(int argc, char **argv)
                             }
                         }
                     }
+                    else
+                    {
+                        errorMessage("LOGIN");
+                        endMessage("LOGIN");
+                    }
                 }
-                else if (strcmp(msg, "REFRESH\n") == 0  && server != 0)
+                else if (strcmp(msg, "REFRESH\n") == 0 && server != 0)
                 {
                     list_ptr = 0;
                     char *saveptr;
@@ -263,7 +268,10 @@ int run_client(int argc, char **argv)
                         endMessage("LOGOUT");
                     }
                     else
-                        printf("Not done\n");
+                    {
+                        errorMessage("LOGOUT");
+                        endMessage("LOGOUT");
+                    }
                     fflush(stdout);
                 }
                 else if (strcmp(msg, "EXIT\n") == 0)
@@ -355,11 +363,17 @@ int connect_to_host(char *server_ip, char *server_port, char *port)
 
     /* Fill up address structures */
     if (getaddrinfo(server_ip, server_port, &hints, &res) != 0)
-        perror("getaddrinfo failed");
+    {
+        errorMessage("LOGIN");
+        endMessage("LOGIN");
+    }
     /* Socket */
     fdsocket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (fdsocket < 0)
-        perror("Failed to create socket");
+    {
+        errorMessage("LOGIN");
+        endMessage("LOGIN");
+    }
 
     struct sockaddr_in my_addr1;
     my_addr1.sin_family = AF_INET;
@@ -395,7 +409,7 @@ void display_list(struct client_details client_list[100])
         if (client_list[i].list_id == 0)
 
             break;
-        cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", client_list[i].list_id, client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
+        cse4589_print_and_log("%-5d%-35s%-20s%-8d\n", (i + 1), client_list[i].hostname, client_list[i].ip_addr, client_list[i].port_num);
     }
     endMessage("LIST");
 }
