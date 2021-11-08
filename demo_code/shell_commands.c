@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
+#include <stdbool.h>
 
 void getIp()
 {
@@ -58,9 +58,16 @@ void successMessage(char *cmdstr) {
 
 void errorMessage(char *cmdstr) {
 	cse4589_print_and_log("[%s:ERROR]\n", cmdstr);
-	cse4589_print_and_log("[%s:END]\n", cmdstr);
 }
 
 void endMessage(char *cmdstr) {
 	cse4589_print_and_log("[%s:END]\n", cmdstr);
+}
+
+
+bool validateIp(char *ip)
+{
+    struct sockaddr_in sa;
+    int result = inet_pton(AF_INET, ip, &(sa.sin_addr));
+    return result != 0;
 }
