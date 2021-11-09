@@ -119,9 +119,9 @@ int run_client(int argc, char **argv)
     FD_SET(STDIN, &master_list);
     head_socket = server;
 
+    printf("\n[PA1-Client@CSE489/589]$ ");
     while (TRUE)
     {
-        printf("\n[PA1-Client@CSE489/589]$ ");
         fflush(stdout);
 
         FD_ZERO(&watch_list);
@@ -374,6 +374,7 @@ int receive_msg_from_server(int server)
         strcpy(block, buffer);
         char *msg = strtok(block, " ");
 
+        // printf("msg:%s\n", msg);
         if (strcmp(msg, "LOGIN") == 0 || strcmp(msg, "REFRESH") == 0)
         {
             char *login = malloc(strlen(buffer) + 1);
@@ -398,10 +399,41 @@ int receive_msg_from_server(int server)
             if (strcmp(login, "LOGIN") == 0)
             {
                 // printf("Only during login");
-                send(server, "BUFFER", 6, 0);
+                send(server, "BUFFER 0", 8, 0);
             }
             // if (send(server, "BUFFER", 6, 0) == 1)
             // printf("Done!\n");
+        }
+        else if (strcmp(msg, "BUFFER") == 0)
+        {
+            // printf("buffer:%s\n", buffer);
+
+            // char *cmd = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // char *fullmsg = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // char *receiverIp = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // char *IP = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // char *message = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // int index;
+            //BUFFER 1 128.205.36.36 128.205.36.35 A
+            // sscanf(buffer, "%s %d %s %s %s", &cmd, &index, &receiverIp, &IP, &message);
+            char *cmd = strtok(buffer, " ");
+            int index = atoi(strtok(NULL, " "));
+            char *receiverIp = strtok(NULL, " ");
+            char *IP = strtok(NULL, " ");
+            char *message = strtok(NULL, "");
+
+            // char *receiverIp = strtok(fullmsg, " ");
+            // char *IP = strtok(NULL, " ");
+            // char *message = strtok(NULL, "");
+
+            successMessage("RECEIVED");
+            cse4589_print_and_log("msg from:%s\n[msg]:%s\n", IP, message);
+            endMessage("RECEIVED");
+
+            char *buffer1 = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            sprintf(buffer1, "%s %d", "BUFFER", index);
+
+            send(server, buffer1, strlen(buffer1), 0);
         }
         else if (strcmp(msg, "NEXT_CLIENT") == 0)
         {
@@ -445,6 +477,7 @@ int receive_msg_from_server(int server)
         {
             char *IP = strtok(buffer, " ");
             char *message = strtok(NULL, "");
+
             successMessage("RECEIVED");
             cse4589_print_and_log("msg from:%s\n[msg]:%s\n", IP, message);
             endMessage("RECEIVED");
@@ -482,6 +515,7 @@ int connect_to_host(char *server_ip, char *server_port, char *port)
     {
         errorMessage("LOGIN");
         endMessage("LOGIN");
+        perror("Unable to create socket\n");
     }
 
     struct sockaddr_in my_addr1;
@@ -494,13 +528,16 @@ int connect_to_host(char *server_ip, char *server_port, char *port)
     {
         errorMessage("LOGIN");
         endMessage("LOGIN");
-        //perror("Unable to bind\n");
+        perror("Unable to bind\n");
     }
     else
     {
         /* Connect */
         if (connect(fdsocket, res->ai_addr, res->ai_addrlen) < 0)
+        {
+            perror("Unable to connect\n");
             errorMessage("LOGIN");
+        }
         else
             successMessage("LOGIN");
         endMessage("LOGIN");
@@ -546,7 +583,7 @@ bool validateIpInList(char *ip)
 {
     for (int i = 0; i < 100; i++)
     {
-        
+
         if (client_list[i].list_id == 0)
             break;
         // printf("client_list[i].ip_addr:%s\n",client_list[i].ip_addr);
