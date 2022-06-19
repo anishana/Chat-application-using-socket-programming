@@ -64,6 +64,9 @@ void clear(struct client_details client_list[100]);
 struct client_details client_list[100];
 int list_ptr = 0;
 char *status;
+bool validateIpInList(char *ip);
+bool validatePort(char *port);
+
 int run_client(int argc, char **argv)
 {
     int server = 0;
@@ -116,9 +119,9 @@ int run_client(int argc, char **argv)
     FD_SET(STDIN, &master_list);
     head_socket = server;
 
+    printf("\n[PA1-Client@CSE489/589]$ ");
     while (TRUE)
     {
-        printf("[PA1-Client@CSE489/589]$ ");
         fflush(stdout);
 
         FD_ZERO(&watch_list);
@@ -178,6 +181,11 @@ int run_client(int argc, char **argv)
                                 FD_SET(server, &master_list);
                             }
                         }
+                        else
+                        {
+                            errorMessage("LOGIN");
+                            endMessage("LOGIN");
+                        }
                     }
                     else
                     {
@@ -193,9 +201,9 @@ int run_client(int argc, char **argv)
                     // printf("\nSENDing Refresh to the remote server ... ");
                     if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
                     {
-                        // printf("Done!\n");
                         successMessage("REFRESH");
                         endMessage("REFRESH");
+                        // printf("Done!\n");
                     }
                     fflush(stdout);
                 }
@@ -206,10 +214,27 @@ int run_client(int argc, char **argv)
                     // printf("\nSENDing it to the remote server ... \n");
 
                     cmd[strcspn(cmd, "\r\n")] = 0;
-                    if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
+
+                    char *sendmsg = malloc(strlen(cmd) + 1);
+                    strcpy(sendmsg, cmd);
+                    char *ip;
+                    if (strtok(sendmsg, " "))
                     {
-                        // printf("Done!\n");
-                        successMessage("SEND");
+                        ip = strtok(NULL, " ");
+                    }
+
+                    if (validateIp(ip) && validateIpInList(ip))
+                    {
+                        if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
+                        {
+                            // printf("Done!\n");
+                            successMessage("SEND");
+                            endMessage("SEND");
+                        }
+                    }
+                    else
+                    {
+                        errorMessage("SEND");
                         endMessage("SEND");
                     }
                     fflush(stdout);
@@ -222,7 +247,12 @@ int run_client(int argc, char **argv)
                     if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
                     {
                         // printf("Done!\n");
-                        successMessage("BROADCAST");
+                        //successMessage("BROADCAST");
+                        //endMessage("BROADCAST");
+                    }
+                    else
+                    {
+                        errorMessage("BROADCAST");
                         endMessage("BROADCAST");
                     }
                     fflush(stdout);
@@ -232,22 +262,49 @@ int run_client(int argc, char **argv)
                     // exception handling needs to be done
                     char *saveptr;
                     // printf("\nBLOCKing IP ... ");
-                    if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
+
+                    char *sendmsg = malloc(strlen(cmd) + 1);
+                    strcpy(sendmsg, cmd);
+                    char *ip;
+
+                    if (strtok(sendmsg, " "))
                     {
-                        successMessage("BLOCK");
+                        ip = strtok(NULL, " ");
+                    }
+
+                    ip[strcspn(ip, "\r\n")] = 0;
+                    if (validateIp(ip) && validateIpInList(ip))
+                    {
+                        send(server, cmd, strlen(cmd), 0);
+                    }
+                    else
+                    {
+                        errorMessage("BLOCK");
                         endMessage("BLOCK");
                     }
+
                     fflush(stdout);
                 }
                 else if (strcmp(msg, "UNBLOCK") == 0 && server != 0)
                 {
                     // exception handling needs to be done
-                    char *saveptr;
-                    // printf("\nUNBLOCKing IP ... ");
-                    if (send(server, cmd, strlen(cmd), 0) == strlen(cmd))
+                    char *sendmsg = malloc(strlen(cmd) + 1);
+                    strcpy(sendmsg, cmd);
+                    char *ip;
+
+                    if (strtok(sendmsg, " "))
                     {
-                        // printf("Done!\n");
-                        successMessage("UNBLOCK");
+                        ip = strtok(NULL, " ");
+                    }
+
+                    ip[strcspn(ip, "\r\n")] = 0;
+                    if (validateIp(ip) && validateIpInList(ip))
+                    {
+                        send(server, cmd, strlen(cmd), 0);
+                    }
+                    else
+                    {
+                        errorMessage("UNBLOCK");
                         endMessage("UNBLOCK");
                     }
                     fflush(stdout);
@@ -267,11 +324,11 @@ int run_client(int argc, char **argv)
                         server = 0;
                         endMessage("LOGOUT");
                     }
-                    else
-                    {
-                        errorMessage("LOGOUT");
-                        endMessage("LOGOUT");
-                    }
+                    // else
+                    // {
+                    //     errorMessage("LOGOUT");
+                    //     endMessage("LOGOUT");
+                    // }
                     fflush(stdout);
                 }
                 else if (strcmp(msg, "EXIT\n") == 0)
@@ -316,26 +373,111 @@ int receive_msg_from_server(int server)
         char *block = malloc(strlen(buffer) + 1);
         strcpy(block, buffer);
         char *msg = strtok(block, " ");
+
+        // printf("msg:%s\n", msg);
         if (strcmp(msg, "LOGIN") == 0 || strcmp(msg, "REFRESH") == 0)
         {
+            char *login = malloc(strlen(buffer) + 1);
+            strcpy(login, msg);
+            strtok(NULL, "");
+            struct client_details *client = malloc(strlen(buffer) + 1);
+            char *cmd;
+
+            // printf("Received buffer: %s\n",buffer);
+            sscanf(buffer, "%s %d %s %s %d", &cmd, &(client_list[list_ptr].list_id), &(client_list[list_ptr].hostname), &(client_list[list_ptr].ip_addr), &(client_list[list_ptr].port_num));
+            // printf(" Done %d %s %s %d\n", client_list[list_ptr].list_id, client_list[list_ptr].hostname, client_list[list_ptr].ip_addr, client_list[list_ptr].port_num);
+            // if (list_ptr == 0 && strcmp(msg, "LOGIN") == 0)
+            // {
+            //     successMessage("LOGIN");
+            //     endMessage("LOGIN");
+            // }
+
+            char *nextClient = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            list_ptr++;
+            sprintf(nextClient, "%s %d", "GET_CLIENT", list_ptr);
+            send(server, nextClient, strlen(nextClient) + 1, 0);
+            if (strcmp(login, "LOGIN") == 0)
+            {
+                // printf("Only during login");
+                send(server, "BUFFER 0", 8, 0);
+            }
+            // if (send(server, "BUFFER", 6, 0) == 1)
+            // printf("Done!\n");
+        }
+        else if (strcmp(msg, "BUFFER") == 0)
+        {
+            // printf("buffer:%s\n", buffer);
+
+            // char *cmd = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // char *fullmsg = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // char *receiverIp = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // char *IP = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // char *message = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            // int index;
+            //BUFFER 1 128.205.36.36 128.205.36.35 A
+            // sscanf(buffer, "%s %d %s %s %s", &cmd, &index, &receiverIp, &IP, &message);
+            char *cmd = strtok(buffer, " ");
+            int index = atoi(strtok(NULL, " "));
+            char *receiverIp = strtok(NULL, " ");
+            char *IP = strtok(NULL, " ");
+            char *message = strtok(NULL, "");
+
+            // char *receiverIp = strtok(fullmsg, " ");
+            // char *IP = strtok(NULL, " ");
+            // char *message = strtok(NULL, "");
+
+            successMessage("RECEIVED");
+            cse4589_print_and_log("msg from:%s\n[msg]:%s\n", IP, message);
+            endMessage("RECEIVED");
+
+            char *buffer1 = (char *)malloc(sizeof(char) * BUFFER_SIZE);
+            sprintf(buffer1, "%s %d", "BUFFER", index);
+
+            send(server, buffer1, strlen(buffer1), 0);
+        }
+        else if (strcmp(msg, "NEXT_CLIENT") == 0)
+        {
+            // printf("NEXT_CLIENT Received buffer: %s\n",buffer);
             strtok(NULL, "");
             struct client_details *client = malloc(strlen(buffer) + 1);
             char *cmd;
             sscanf(buffer, "%s %d %s %s %d", &cmd, &(client_list[list_ptr].list_id), &(client_list[list_ptr].hostname), &(client_list[list_ptr].ip_addr), &(client_list[list_ptr].port_num));
-            //printf(" Done %d %s %s %d\n", client_list[list_ptr].list_id, client_list[list_ptr].hostname, client_list[list_ptr].ip_addr, client_list[list_ptr].port_num);
-            if (list_ptr == 0 && strcmp(msg, "LOGIN") == 0)
-            {
-                successMessage("LOGIN");
-                endMessage("LOGIN");
-            }
+            char *nextClient = (char *)malloc(sizeof(char) * BUFFER_SIZE);
             list_ptr++;
-            if (send(server, "BUFFER", 6, 0) == 1)
-                printf("Done!\n");
+            sprintf(nextClient, "%s %d", "GET_CLIENT", list_ptr);
+            // printf("NEXT_CLIENT nextClient: %s\n",nextClient);
+            send(server, nextClient, strlen(nextClient) + 1, 0);
+        }
+        else if (strcmp(msg, "LOGINACK") == 0)
+        {
+            successMessage("LOGIN");
+            endMessage("LOGIN");
+        }
+        else if (strcmp(msg, "BLOCKERROR") == 0)
+        {
+            errorMessage("BLOCK");
+            endMessage("BLOCK");
+        }
+        else if (strcmp(msg, "BLOCKSUCCESS") == 0)
+        {
+            successMessage("BLOCK");
+            endMessage("BLOCK");
+        }
+        else if (strcmp(msg, "UNBLOCKERROR") == 0)
+        {
+            errorMessage("UNBLOCK");
+            endMessage("UNBLOCK");
+        }
+        else if (strcmp(msg, "UNBLOCKSUCCESS") == 0)
+        {
+            successMessage("UNBLOCK");
+            endMessage("UNBLOCK");
         }
         else
         {
             char *IP = strtok(buffer, " ");
             char *message = strtok(NULL, "");
+
             successMessage("RECEIVED");
             cse4589_print_and_log("msg from:%s\n[msg]:%s\n", IP, message);
             endMessage("RECEIVED");
@@ -373,6 +515,7 @@ int connect_to_host(char *server_ip, char *server_port, char *port)
     {
         errorMessage("LOGIN");
         endMessage("LOGIN");
+        perror("Unable to create socket\n");
     }
 
     struct sockaddr_in my_addr1;
@@ -385,13 +528,16 @@ int connect_to_host(char *server_ip, char *server_port, char *port)
     {
         errorMessage("LOGIN");
         endMessage("LOGIN");
-        //perror("Unable to bind\n");
+        perror("Unable to bind\n");
     }
     else
     {
         /* Connect */
         if (connect(fdsocket, res->ai_addr, res->ai_addrlen) < 0)
+        {
+            perror("Unable to connect\n");
             errorMessage("LOGIN");
+        }
         else
             successMessage("LOGIN");
         endMessage("LOGIN");
@@ -428,18 +574,28 @@ void clear(struct client_details client_list[100])
     }
 }
 
-bool validateIp(char *ip)
-{
-    struct sockaddr_in sa;
-    int result = inet_pton(AF_INET, ip, &(sa.sin_addr));
-    return result != 0;
-}
-
 bool validatePort(char *port)
 {
     return ((atoi(port) > 1024) && (atoi(port) <= 65535));
 }
 
+bool validateIpInList(char *ip)
+{
+    for (int i = 0; i < 100; i++)
+    {
+
+        if (client_list[i].list_id == 0)
+            break;
+        // printf("client_list[i].ip_addr:%s\n",client_list[i].ip_addr);
+        // printf("ip:%s\n",ip);
+
+        if (client_list[i].ip_addr != NULL && ip != NULL && strcmp(client_list[i].ip_addr, ip) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
 void initialiseListsClient()
 {
     for (int i = 0; i < 100; i++)
